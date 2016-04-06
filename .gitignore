@@ -3,12 +3,10 @@
 
 !*/
 
-
 #Whitelist
 !*.cc
 !*.h
 !CMakeLists.txt
 !config.json
-!*.py
 
 build
