@@ -28,8 +28,10 @@ endif()
 find_package(LibClang REQUIRED)
 find_package(Boost 1.54 COMPONENTS thread log regex system filesystem REQUIRED)
 find_package(ASPELL REQUIRED)
+find_package(PythonLibs 3 REQUIRED)
 set(LIBCLANGMM_INCLUDE_DIR ../libclangmm/src)
 set(TINY_PROCESS_INCLUDE_DIR ../tiny-process-library)
+set(PYBIND11_INCLUDE_DIR ../pybind11/include)
 
 string(REPLACE libclang liblldb LIBLLDB_LIBRARIES "${LIBCLANG_LIBRARIES}")
 if(EXISTS "${LIBLLDB_LIBRARIES}")
@@ -48,6 +50,7 @@ endif()
 include(FindPkgConfig)
 pkg_check_modules(GTKMM gtkmm-3.0 REQUIRED)
 pkg_check_modules(GTKSVMM gtksourceviewmm-3.0 REQUIRED)
+pkg_check_modules(PYGOBJECT pygobject-3.0 REQUIRED)
 
 set(global_includes
    ${Boost_INCLUDE_DIRS}
@@ -57,6 +60,9 @@ set(global_includes
    ${LIBCLANGMM_INCLUDE_DIR}
    ${ASPELL_INCLUDE_DIR}
    ${TINY_PROCESS_INCLUDE_DIR}
+   ${PYBIND11_INCLUDE_DIR}
+   ${PYTHON_INCLUDE_DIRS}
+   ${PYGOBJECT_INCLUDE_DIRS}
 )
 
 set(global_libraries
@@ -66,6 +72,8 @@ set(global_libraries
   ${Boost_LIBRARIES}
   ${ASPELL_LIBRARIES}
   ${LIBLLDB_LIBRARIES}
+  ${PYTHON_LIBRARIES}
+  ${PYGOBJECT_LIBRARIES}
 )
 
 set(project_files
@@ -95,6 +103,8 @@ set(project_files
     project.h
     project_build.h
     project_build.cc
+    python_interpreter.cc
+    python_interpreter.h
     selectiondialog.cc
     selectiondialog.h
     source.cc
