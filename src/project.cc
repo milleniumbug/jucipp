@@ -167,6 +167,9 @@ void Project::Clang::compile() {
   if(default_build_path.empty() || !build->update_default_build())
     return;
   
+  if(Config::get().project.clear_terminal_on_compile)
+    Terminal::get().clear();
+  
   compiling=true;
   Terminal::get().print("Compiling project "+build->project_path.string()+"\n");
   Terminal::get().async_process(Config::get().project.make_command, default_build_path, [this](int exit_status) {
@@ -198,6 +201,9 @@ void Project::Clang::compile_and_run() {
       arguments.replace(pos, project_path.string().size(), default_build_path.string());
     arguments=filesystem::escape_argument(arguments);
   }
+  
+  if(Config::get().project.clear_terminal_on_compile)
+    Terminal::get().clear();
   
   compiling=true;
   Terminal::get().print("Compiling and running "+arguments+"\n");
@@ -278,13 +284,16 @@ void Project::Clang::debug_start() {
     }
   }
   
+  if(Config::get().project.clear_terminal_on_compile)
+    Terminal::get().clear();
+  
   debugging=true;
   Terminal::get().print("Compiling and debugging "+run_arguments+"\n");
   Terminal::get().async_process(Config::get().project.make_command, debug_build_path, [this, breakpoints, run_arguments, project_path](int exit_status){
     if(exit_status!=EXIT_SUCCESS)
       debugging=false;
     else {
-      debug_start_mutex.lock();
+      std::unique_lock<std::mutex> lock(debug_start_mutex);
       Debug::Clang::get().start(run_arguments, project_path, *breakpoints, [this, run_arguments](int exit_status){
         debugging=false;
         Terminal::get().async_print(run_arguments+" returned: "+std::to_string(exit_status)+'\n');
@@ -301,7 +310,6 @@ void Project::Clang::debug_start() {
           debug_update_stop();
         });
       });
-      debug_start_mutex.unlock();
     }
   });
 }
@@ -488,9 +496,8 @@ void Project::Clang::debug_write(const std::string &buffer) {
 }
 
 void Project::Clang::debug_delete() {
-  debug_start_mutex.lock();
+  std::unique_lock<std::mutex> lock(debug_start_mutex);
   Debug::Clang::get().delete_debug();
-  debug_start_mutex.unlock();
 }
 #endif
 

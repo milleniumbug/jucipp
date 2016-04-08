@@ -2,26 +2,25 @@
 
 Dispatcher::Dispatcher() {
   connection=dispatcher.connect([this] {
-    functions_mutex.lock();
+    std::unique_lock<std::mutex> lock(functions_mutex);
     for(auto &function: functions) {
       function();
     }
     functions.clear();
-    functions_mutex.unlock();
   });
 }
 
 Dispatcher::~Dispatcher() {
   disconnect();
-  functions_mutex.lock();
+  std::unique_lock<std::mutex> lock(functions_mutex);
   functions.clear();
-  functions_mutex.unlock();
 }
 
 void Dispatcher::post(std::function<void()> &&function) {
-  functions_mutex.lock();
-  functions.emplace_back(function);
-  functions_mutex.unlock();
+  {
+    std::unique_lock<std::mutex> lock(functions_mutex);
+    functions.emplace_back(function);
+  }
   dispatcher();
 }
 
