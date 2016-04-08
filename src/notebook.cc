@@ -63,13 +63,19 @@ int Notebook::size() {
   return get_n_pages();
 }
 
-Source::View* Notebook::get_view(int page) {
-  return source_views.at(get_index(page));
+Source::View* Notebook::get_view(int page){
+  size_t index=get_index(page);
+  if(index!=static_cast<size_t>(-1))
+    return source_views[index];
+  else
+    return nullptr;
 }
 
-size_t Notebook::get_index(int page) {
-  for(size_t c=0;c<hboxes.size();c++) {
-    if(page_num(*hboxes.at(c))==page)
+size_t Notebook::get_index(int page){
+  if(page==-1)
+    return -1;
+  for(size_t c=0;c<hboxes.size();c++){
+    if(page_num(*hboxes[c])==page)
       return c;
   }
   return -1;
