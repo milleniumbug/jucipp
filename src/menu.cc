@@ -4,7 +4,7 @@
 #include <iostream>
 
 //TODO: if Ubuntu ever gets fixed, cleanup the Ubuntu specific code
-Menu::Menu() {
+Menu::Menu() : plugin_menu(nullptr) {
   auto accels=Config::get().menu.keys;
   for(auto &accel: accels) {
 #ifdef JUCI_UBUNTU

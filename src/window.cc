@@ -3,7 +3,7 @@
 #include "config.h"
 #include "menu.h"
 #include "directories.h"
-//#include "api.h"
+#include "python_interpreter.h"
 #include "dialogs.h"
 #include "filesystem.h"
 #include "project.h"
@@ -244,11 +244,27 @@ void Window::set_menu_actions() {
     if(notebook.get_current_page()!=-1) {
       if(notebook.save_current()) {
         if(notebook.get_current_page()!=-1) {
-          if(notebook.get_current_view()->file_path==Config::get().juci_home_path()/"config"/"config.json") {
+          auto file_path=notebook.get_current_view()->file_path;
+          if(file_path==Config::get().juci_home_path()/"config"/"config.json") {
             configure();
             for(int c=0;c<notebook.size();c++) {
               notebook.get_view(c)->configure();
               notebook.configure(c);
+            }
+          }
+          if(file_path>Config::get().python.plugin_directory){
+            auto stem=file_path.stem().string();
+            auto module=PythonInterpreter::get().get_loaded_module(stem);
+            if(module){
+              auto module_new=pybind11::module(PyImport_ReloadModule(module.ptr()),false);
+              if(module_new)
+                Terminal::get().print("Python module "+stem + " has been reloaded \n");
+              else PythonError();
+            }else{
+              PythonError();
+              module=PythonInterpreter::get().import(stem);
+              if(module)
+                Terminal::get().print("Python module "+stem + " has been reloaded \n");
             }
           }
         }
