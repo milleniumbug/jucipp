@@ -31,7 +31,8 @@ bool Directories::TreeStore::row_drop_possible_vfunc(const Gtk::TreeModel::Path 
 
 bool Directories::TreeStore::drag_data_received_vfunc(const TreeModel::Path &path, const Gtk::SelectionData &selection_data) {
   auto &directories=Directories::get();
-  
+  EntryBox* entrybox = &EntryBox::get();
+  Terminal* terminal = &Terminal::get();
   auto get_target_folder=[this, &directories](const TreeModel::Path &path) {
     if(path.size()==1)
       return directories.path;
@@ -73,7 +74,7 @@ bool Directories::TreeStore::drag_data_received_vfunc(const TreeModel::Path &pat
       return false;
     
     if(boost::filesystem::exists(target_path)) {
-      Terminal::get().print("Error: could not move file: "+target_path.string()+" already exists\n", true);
+      terminal->print("Error: could not move file: "+target_path.string()+" already exists\n", true);
       return false;
     }
     
@@ -82,12 +83,12 @@ bool Directories::TreeStore::drag_data_received_vfunc(const TreeModel::Path &pat
     boost::system::error_code ec;
     boost::filesystem::rename(source_path, target_path, ec);
     if(ec) {
-      Terminal::get().print("Error: could not move file: "+ec.message()+'\n', true);
+      terminal->print("Error: could not move file: "+ec.message()+'\n', true);
       return false;
     }
     
-    for(int c=0;c<Notebook::get().size();c++) {
-      auto view=Notebook::get().get_view(c);
+    for(int c=0;c<notebook->size();c++) {
+      auto view=notebook->get_view(c);
       if(is_directory) {
         if(filesystem::file_in_path(view->file_path, source_path)) {
           auto file_it=view->file_path.begin();
@@ -107,11 +108,11 @@ bool Directories::TreeStore::drag_data_received_vfunc(const TreeModel::Path &pat
       }
     }
     
-    Directories::get().update();
+    directories.update();
     directories.select(target_path);
   }
   
-  EntryBox::get().hide();
+  entrybox->hide();
   return false;
 }
 
@@ -120,9 +121,11 @@ bool Directories::TreeStore::drag_data_delete_vfunc (const Gtk::TreeModel::Path 
 }
 
 Directories::Directories() : Gtk::TreeView(), stop_update_thread(false) {
+  notebook = &Notebook::get();
+  EntryBox* entrybox = &EntryBox::get();
+  Terminal* terminal = &Terminal::get();
   this->set_enable_tree_lines(true);
-  
-  tree_store = TreeStore::create();
+  tree_store = TreeStore::create(notebook);
   tree_store->set_column_types(column_record);
   set_model(tree_store);
   append_column("", column_record.name);
@@ -209,37 +212,37 @@ Directories::Directories() : Gtk::TreeView(), stop_update_thread(false) {
   enable_model_drag_dest();
   
   auto new_file_label = "New File";
-  auto new_file_function = [this] {
+  auto new_file_function = [this, entrybox, terminal] {
     if(menu_popup_row_path.empty())
       return;
-    EntryBox::get().clear();
+    entrybox->clear();
     auto source_path=std::make_shared<boost::filesystem::path>(menu_popup_row_path);
-    EntryBox::get().entries.emplace_back("", [this, source_path](const std::string &content) {
+    entrybox->entries.emplace_back("", [this, source_path, entrybox, terminal](const std::string &content) {
       bool is_directory=boost::filesystem::is_directory(*source_path);
       auto target_path = (is_directory ? *source_path : source_path->parent_path())/content;
       if(!boost::filesystem::exists(target_path)) {
         if(filesystem::write(target_path, "")) {
           update();
-          Notebook::get().open(target_path);
+          notebook->open(target_path);
         }
         else {
-          Terminal::get().print("Error: could not create "+target_path.string()+'\n', true);
+          terminal->print("Error: could not create "+target_path.string()+'\n', true);
           return;
         }
       }
       else {
-        Terminal::get().print("Error: could not create "+target_path.string()+": already exists\n", true);
+        terminal->print("Error: could not create "+target_path.string()+": already exists\n", true);
         return;
       }
       
-      EntryBox::get().hide();
+      entrybox->hide();
     });
-    auto entry_it=EntryBox::get().entries.begin();
+    auto entry_it=entrybox->entries.begin();
     entry_it->set_placeholder_text("Filename");
-    EntryBox::get().buttons.emplace_back("Create New File", [this, entry_it](){
+    entrybox->buttons.emplace_back("Create New File", [this, entry_it](){
       entry_it->activate();
     });
-    EntryBox::get().show();
+    entrybox->show();
   };
   
   menu_item_new_file.set_label(new_file_label);
@@ -251,12 +254,12 @@ Directories::Directories() : Gtk::TreeView(), stop_update_thread(false) {
   menu_root.append(menu_root_item_new_file);
   
   auto new_folder_label = "New Folder";
-  auto new_folder_function = [this] {
+  auto new_folder_function = [this, entrybox, terminal] {
     if(menu_popup_row_path.empty())
       return;
-    EntryBox::get().clear();
+    entrybox->clear();
     auto source_path=std::make_shared<boost::filesystem::path>(menu_popup_row_path);
-    EntryBox::get().entries.emplace_back("", [this, source_path](const std::string &content) {
+    entrybox->entries.emplace_back("", [this, source_path, entrybox, terminal](const std::string &content) {
       bool is_directory=boost::filesystem::is_directory(*source_path);
       auto target_path = (is_directory ? *source_path : source_path->parent_path())/content;
       if(!boost::filesystem::exists(target_path)) {
@@ -267,23 +270,23 @@ Directories::Directories() : Gtk::TreeView(), stop_update_thread(false) {
           select(target_path);
         }
         else {
-          Terminal::get().print("Error: could not create "+target_path.string()+": "+ec.message(), true);
+          terminal->print("Error: could not create "+target_path.string()+": "+ec.message(), true);
           return;
         }
       }
       else {
-        Terminal::get().print("Error: could not create "+target_path.string()+": already exists\n", true);
+        terminal->print("Error: could not create "+target_path.string()+": already exists\n", true);
         return;
       }
       
-      EntryBox::get().hide();
+      entrybox->hide();
     });
-    auto entry_it=EntryBox::get().entries.begin();
+    auto entry_it=entrybox->entries.begin();
     entry_it->set_placeholder_text("Folder name");
-    EntryBox::get().buttons.emplace_back("Create New Folder", [this, entry_it](){
+    entrybox->buttons.emplace_back("Create New Folder", [this, entry_it](){
       entry_it->activate();
     });
-    EntryBox::get().show();
+    entrybox->show();
   };
   
   menu_item_new_folder.set_label(new_folder_label);
@@ -297,32 +300,32 @@ Directories::Directories() : Gtk::TreeView(), stop_update_thread(false) {
   menu.append(menu_item_separator);
   
   menu_item_rename.set_label("Rename");
-  menu_item_rename.signal_activate().connect([this] {
+  menu_item_rename.signal_activate().connect([this, entrybox, terminal] {
     if(menu_popup_row_path.empty())
       return;
-    EntryBox::get().clear();
+    entrybox->clear();
     auto source_path=std::make_shared<boost::filesystem::path>(menu_popup_row_path);
-    EntryBox::get().entries.emplace_back(menu_popup_row_path.filename().string(), [this, source_path](const std::string &content){
+    entrybox->entries.emplace_back(menu_popup_row_path.filename().string(), [this, source_path, entrybox, terminal](const std::string &content){
       bool is_directory=boost::filesystem::is_directory(*source_path);
       
       auto target_path=source_path->parent_path()/content;
       
       if(boost::filesystem::exists(target_path)) {
-        Terminal::get().print("Error: could not rename to "+target_path.string()+": already exists\n", true);
+        terminal->print("Error: could not rename to "+target_path.string()+": already exists\n", true);
         return;
       }
       
       boost::system::error_code ec;
       boost::filesystem::rename(*source_path, target_path, ec);
       if(ec) {
-        Terminal::get().print("Error: could not rename "+source_path->string()+": "+ec.message()+'\n', true);
+        terminal->print("Error: could not rename "+source_path->string()+": "+ec.message()+'\n', true);
         return;
       }
       update();
       select(target_path);
       
-      for(int c=0;c<Notebook::get().size();c++) {
-        auto view=Notebook::get().get_view(c);
+      for(int c=0;c<notebook->size();c++) {
+        auto view=notebook->get_view(c);
         if(is_directory) {
           if(filesystem::file_in_path(view->file_path, *source_path)) {
             auto file_it=view->file_path.begin();
@@ -347,23 +350,23 @@ Directories::Directories() : Gtk::TreeView(), stop_update_thread(false) {
           if(view->language)
             new_language_id=view->language->get_id();
           if(new_language_id!=old_language_id)
-            Terminal::get().print("Warning: language for "+target_path.string()+" has changed. Please reopen the file\n");
+            terminal->print("Warning: language for "+target_path.string()+" has changed. Please reopen the file\n");
         }
       }
       
-      EntryBox::get().hide();
+      entrybox->hide();
     });
-    auto entry_it=EntryBox::get().entries.begin();
+    auto entry_it=entrybox->entries.begin();
     entry_it->set_placeholder_text("Filename");
-    EntryBox::get().buttons.emplace_back("Rename file", [this, entry_it](){
+    entrybox->buttons.emplace_back("Rename file", [this, entry_it](){
       entry_it->activate();
     });
-    EntryBox::get().show();
+    entrybox->show();
   });
   menu.append(menu_item_rename);
   
   menu_item_delete.set_label("Delete");
-  menu_item_delete.signal_activate().connect([this] {
+  menu_item_delete.signal_activate().connect([this, terminal] {
     if(menu_popup_row_path.empty())
       return;
     Gtk::MessageDialog dialog((Gtk::Window&)(*get_toplevel()), "Delete!", false, Gtk::MESSAGE_QUESTION, Gtk::BUTTONS_YES_NO);
@@ -376,12 +379,12 @@ Directories::Directories() : Gtk::TreeView(), stop_update_thread(false) {
       boost::system::error_code ec;
       boost::filesystem::remove_all(menu_popup_row_path, ec);
       if(ec)
-        Terminal::get().print("Error: could not delete "+menu_popup_row_path.string()+": "+ec.message()+"\n", true);
+        terminal->print("Error: could not delete "+menu_popup_row_path.string()+": "+ec.message()+"\n", true);
       else {
         update();
         
-        for(int c=0;c<Notebook::get().size();c++) {
-          auto view=Notebook::get().get_view(c);
+        for(int c=0;c<notebook->size();c++) {
+          auto view=notebook->get_view(c);
           
           if(is_directory) {
             if(filesystem::file_in_path(view->file_path, menu_popup_row_path))
@@ -507,8 +510,9 @@ void Directories::select(const boost::filesystem::path &select_path) {
 }
 
 bool Directories::on_button_press_event(GdkEventButton* event) {
+  EntryBox* entrybox = &EntryBox::get();
   if(event->type==GDK_BUTTON_PRESS && event->button==GDK_BUTTON_SECONDARY) {
-    EntryBox::get().hide();
+    entrybox->hide();
     Gtk::TreeModel::Path path;
     if(get_path_at_pos(static_cast<int>(event->x), static_cast<int>(event->y), path)) {
       menu_popup_row_path=get_model()->get_iter(path)->get_value(column_record.path);

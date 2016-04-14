@@ -80,6 +80,7 @@ Source::View* Notebook::get_current_view() {
 }
 
 void Notebook::open(const boost::filesystem::path &file_path) {
+  Terminal* terminal = &Terminal::get();
   JDEBUG("start");
   for(int c=0;c<size();c++) {
     if(file_path==get_view(c)->file_path) {
@@ -92,7 +93,7 @@ void Notebook::open(const boost::filesystem::path &file_path) {
   if(boost::filesystem::exists(file_path)) {
     std::ifstream can_read(file_path.string());
     if(!can_read) {
-      Terminal::get().print("Error: could not open "+file_path.string()+"\n", true);
+      terminal->print("Error: could not open "+file_path.string()+"\n", true);
       return;
     }
     can_read.close();
@@ -187,10 +188,11 @@ void Notebook::open(const boost::filesystem::path &file_path) {
 
 void Notebook::configure(int view_nr) {
 #if GTKSOURCEVIEWMM_MAJOR_VERSION > 2 & GTKSOURCEVIEWMM_MINOR_VERSION > 17
-  auto source_font_description=Pango::FontDescription(Config::get().source.font);
-  auto source_map_font_desc=Pango::FontDescription(static_cast<std::string>(source_font_description.get_family())+" "+Config::get().source.map_font_size); 
+  Config* config = &Config::get();
+  auto source_font_description=Pango::FontDescription(config->source.font);
+  auto source_map_font_desc=Pango::FontDescription(static_cast<std::string>(source_font_description.get_family())+" "+config->source.map_font_size); 
   source_maps.at(view_nr)->override_font(source_map_font_desc);
-  if(Config::get().source.show_map) {
+  if(config->source.show_map) {
     if(hboxes.at(view_nr)->get_children().size()==1)
       hboxes.at(view_nr)->pack_end(*source_maps.at(view_nr), Gtk::PACK_SHRINK);
   }
@@ -200,6 +202,8 @@ void Notebook::configure(int view_nr) {
 }
 
 bool Notebook::save(int page) {
+  Terminal* terminal = &Terminal::get();
+  Config* config = &Config::get();
   JDEBUG("start");
   if(page>=size()) {
     JDEBUG("end false");
@@ -208,7 +212,7 @@ bool Notebook::save(int page) {
   auto view=get_view(page);
   if (view->file_path != "" && view->get_buffer()->get_modified()) {
     //Remove trailing whitespace characters on save, and add trailing newline if missing
-    if(Config::get().source.cleanup_whitespace_characters) {
+    if(config->source.cleanup_whitespace_characters) {
       auto buffer=view->get_buffer();
       buffer->begin_user_action();
       for(int line=0;line<buffer->get_line_count();line++) {
@@ -252,7 +256,7 @@ bool Notebook::save(int page) {
       JDEBUG("end true");
       return true;
     }
-    Terminal::get().print("Error: could not save file " +view->file_path.string()+"\n", true);
+    terminal->print("Error: could not save file " +view->file_path.string()+"\n", true);
   }
   JDEBUG("end false");
   return false;
@@ -312,8 +316,9 @@ bool Notebook::close_current_page() {
 }
 
 boost::filesystem::path Notebook::get_current_folder() {
-  if(!Directories::get().path.empty())
-    return Directories::get().path;
+  Directories* directories = &Directories::get();
+  if(!directories->path.empty())
+    return directories->path;
   else if(get_current_page()!=-1)
     return get_current_view()->file_path.parent_path();
   else

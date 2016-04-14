@@ -5,7 +5,8 @@
 
 //TODO: if Ubuntu ever gets fixed, cleanup the Ubuntu specific code
 Menu::Menu() {
-  auto accels=Config::get().menu.keys;
+  Config* config = &Config::get();
+  auto accels=config->menu.keys;
   for(auto &accel: accels) {
 #ifdef JUCI_UBUNTU
     size_t pos=0;
@@ -391,11 +392,12 @@ void Menu::add_action(const std::string &name, std::function<void()> action) {
 }
 
 void Menu::set_keys() {
+  Config* config = &Config::get();
   auto g_application=g_application_get_default();
   auto gio_application=Glib::wrap(g_application, true);
   auto application=Glib::RefPtr<Gtk::Application>::cast_static(gio_application);
            
-  for(auto &key: Config::get().menu.keys) {
+  for(auto &key: config->menu.keys) {
     if(key.second.size()>0 && actions.find(key.first)!=actions.end()) {
 #if GTK_VERSION_GE(3, 12)
       application->set_accel_for_action("app."+key.first, key.second); 
@@ -407,13 +409,14 @@ void Menu::set_keys() {
 }
 
 void Menu::build() {
+  Menu* menu = &Menu::get();
   builder = Gtk::Builder::create();
   
   try {
     builder->add_from_string(ui_xml);
-    auto object = Menu::get().builder->get_object("juci-menu");
+    auto object = menu->builder->get_object("juci-menu");
     juci_menu = Glib::RefPtr<Gio::Menu>::cast_dynamic(object);
-    object = Menu::get().builder->get_object("window-menu");
+    object = menu->builder->get_object("window-menu");
     window_menu = Glib::RefPtr<Gio::Menu>::cast_dynamic(object);
   }
   catch (const Glib::Error &ex) {

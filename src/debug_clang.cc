@@ -40,6 +40,7 @@ void Debug::Clang::start(const std::string &command, const boost::filesystem::pa
                   std::function<void(int exit_status)> callback,
                   std::function<void(const std::string &status)> status_callback,
                   std::function<void(const boost::filesystem::path &file_path, int line_nr, int line_index)> stop_callback) {
+  Terminal* terminal = &Terminal::get();
   if(!debugger) {
     lldb::SBDebugger::Initialize();
     debugger=std::unique_ptr<lldb::SBDebugger>(new lldb::SBDebugger(lldb::SBDebugger::Create(true, log, nullptr)));
@@ -81,7 +82,7 @@ void Debug::Clang::start(const std::string &command, const boost::filesystem::pa
   
   auto target=debugger->CreateTarget(executable.c_str());
   if(!target.IsValid()) {
-    Terminal::get().async_print("Error (debug): Could not create debug target to: "+executable+'\n', true);
+    terminal->async_print("Error (debug): Could not create debug target to: "+executable+'\n', true);
     if(callback)
       callback(-1);
     return;
@@ -90,7 +91,7 @@ void Debug::Clang::start(const std::string &command, const boost::filesystem::pa
   //Set breakpoints
   for(auto &breakpoint: breakpoints) {
     if(!(target.BreakpointCreateByLocation(breakpoint.first.string().c_str(), breakpoint.second)).IsValid()) {
-      Terminal::get().async_print("Error (debug): Could not create breakpoint at: "+breakpoint.first.string()+":"+std::to_string(breakpoint.second)+'\n', true);
+      terminal->async_print("Error (debug): Could not create breakpoint at: "+breakpoint.first.string()+":"+std::to_string(breakpoint.second)+'\n', true);
       if(callback)
         callback(-1);
       return;
@@ -100,14 +101,14 @@ void Debug::Clang::start(const std::string &command, const boost::filesystem::pa
   lldb::SBError error;
   process = std::unique_ptr<lldb::SBProcess>(new lldb::SBProcess(target.Launch(*listener, argv, (const char**)environ, nullptr, nullptr, nullptr, path.string().c_str(), lldb::eLaunchFlagNone, false, error)));
   if(error.Fail()) {
-    Terminal::get().async_print(std::string("Error (debug): ")+error.GetCString()+'\n', true);
+    terminal->async_print(std::string("Error (debug): ")+error.GetCString()+'\n', true);
     if(callback)
       callback(-1);
     return;
   }
   if(debug_thread.joinable())
     debug_thread.join();
-  debug_thread=std::thread([this, callback, status_callback, stop_callback]() {
+  debug_thread=std::thread([this, callback, status_callback, stop_callback, terminal]() {
     lldb::SBEvent event;
     while(true) {
       std::unique_lock<std::mutex> lock(event_mutex);
@@ -196,14 +197,14 @@ void Debug::Clang::start(const std::string &command, const boost::filesystem::pa
           char buffer[buffer_size];
           size_t n;
           while((n=process->GetSTDOUT(buffer, buffer_size))!=0)
-            Terminal::get().async_print(std::string(buffer, n));
+            terminal->async_print(std::string(buffer, n));
         }
         //TODO: for some reason stderr is redirected to stdout
         if((event.GetType() & lldb::SBProcess::eBroadcastBitSTDERR)>0) {
           char buffer[buffer_size];
           size_t n;
           while((n=process->GetSTDERR(buffer, buffer_size))!=0)
-            Terminal::get().async_print(std::string(buffer, n), true);
+            terminal->async_print(std::string(buffer, n), true);
         }
       }
       lock.unlock();
@@ -220,19 +221,21 @@ void Debug::Clang::continue_debug() {
 
 void Debug::Clang::stop() {
   std::unique_lock<std::mutex> lock(event_mutex);
+  Terminal* terminal = &Terminal::get();
   if(state==lldb::StateType::eStateRunning) {
     auto error=process->Stop();
     if(error.Fail())
-      Terminal::get().async_print(std::string("Error (debug): ")+error.GetCString()+'\n', true);
+      terminal->async_print(std::string("Error (debug): ")+error.GetCString()+'\n', true);
   }
 }
 
 void Debug::Clang::kill() {
   std::unique_lock<std::mutex> lock(event_mutex);
+  Terminal* terminal = &Terminal::get();
   if(process) {
     auto error=process->Kill();
     if(error.Fail())
-      Terminal::get().async_print(std::string("Error (debug): ")+error.GetCString()+'\n', true);
+      terminal->async_print(std::string("Error (debug): ")+error.GetCString()+'\n', true);
   }
 }
 
@@ -443,15 +446,17 @@ bool Debug::Clang::is_running() {
 }
 
 void Debug::Clang::add_breakpoint(const boost::filesystem::path &file_path, int line_nr) {
+  Terminal* terminal = &Terminal::get();
   std::unique_lock<std::mutex> lock(event_mutex);
   if(state==lldb::eStateStopped || state==lldb::eStateRunning) {
     if(!(process->GetTarget().BreakpointCreateByLocation(file_path.string().c_str(), line_nr)).IsValid())
-      Terminal::get().async_print("Error (debug): Could not create breakpoint at: "+file_path.string()+":"+std::to_string(line_nr)+'\n', true);
+      terminal->async_print("Error (debug): Could not create breakpoint at: "+file_path.string()+":"+std::to_string(line_nr)+'\n', true);
   }
 }
 
 void Debug::Clang::remove_breakpoint(const boost::filesystem::path &file_path, int line_nr, int line_count) {
   std::unique_lock<std::mutex> lock(event_mutex);
+  Terminal* terminal = &Terminal::get();
   if(state==lldb::eStateStopped || state==lldb::eStateRunning) {
     auto target=process->GetTarget();
     for(int line_nr_try=line_nr;line_nr_try<line_count;line_nr_try++) {
@@ -465,7 +470,7 @@ void Debug::Clang::remove_breakpoint(const boost::filesystem::path &file_path, i
             breakpoint_path/=file_spec.GetFilename();
             if(breakpoint_path==file_path) {
               if(!target.BreakpointDelete(breakpoint.GetID()))
-                Terminal::get().async_print("Error (debug): Could not delete breakpoint at: "+file_path.string()+":"+std::to_string(line_nr)+'\n', true);
+                terminal->async_print("Error (debug): Could not delete breakpoint at: "+file_path.string()+":"+std::to_string(line_nr)+'\n', true);
               return;
             }
           }

@@ -40,6 +40,7 @@ Config::Config() {
 }
 
 void Config::load() {
+  ::Terminal* terminal = &::Terminal::get();
   auto config_json = (home/"config"/"config.json").string(); // This causes some redundant copies, but assures windows support
   try {
     find_or_create_config_files();
@@ -48,7 +49,7 @@ void Config::load() {
     retrieve_config();
   }
   catch(const std::exception &e) {
-    ::Terminal::get().print("Error: could not parse "+config_json+": "+e.what()+"\n", true);
+    terminal->print("Error: could not parse "+config_json+": "+e.what()+"\n", true);
     std::stringstream ss;
     ss << configjson;
     boost::property_tree::read_json(ss, cfg);

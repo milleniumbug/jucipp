@@ -10,7 +10,8 @@ std::unique_ptr<Project::Build> Project::get_build(const boost::filesystem::path
 }
 
 boost::filesystem::path Project::Build::get_default_build_path() {
-  boost::filesystem::path default_build_path=Config::get().project.default_build_path;
+  Config* config = &Config::get();
+  boost::filesystem::path default_build_path=config->project.default_build_path;
   
   const std::string path_variable_project_directory_name="<project_directory_name>";
   size_t pos=0;
@@ -30,7 +31,8 @@ boost::filesystem::path Project::Build::get_default_build_path() {
 }
 
 boost::filesystem::path Project::Build::get_debug_build_path() {
-  boost::filesystem::path debug_build_path=Config::get().project.debug_build_path;
+  Config* config = &Config::get();
+  boost::filesystem::path debug_build_path=config->project.debug_build_path;
   
   const std::string path_variable_project_directory_name="<project_directory_name>";
   size_t pos=0;
@@ -46,7 +48,7 @@ boost::filesystem::path Project::Build::get_debug_build_path() {
   const std::string path_variable_default_build_path="<default_build_path>";
   pos=0;
   debug_build_path_string=debug_build_path.string();
-  auto default_build_path=Config::get().project.default_build_path;
+  auto default_build_path=config->project.default_build_path;
   while((pos=debug_build_path_string.find(path_variable_default_build_path, pos))!=std::string::npos) {
     debug_build_path_string.replace(pos, path_variable_default_build_path.size(), default_build_path);
     pos+=default_build_path.size();

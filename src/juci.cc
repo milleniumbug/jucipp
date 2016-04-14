@@ -42,15 +42,20 @@ int Application::on_command_line(const Glib::RefPtr<Gio::ApplicationCommandLine>
 }
 
 void Application::on_activate() {
-  add_window(Window::get());
-  Window::get().show();
+  Notebook* notebook = &Notebook::get();
+  Window* window = &Window::get();
+  Config* config = &Config::get();
+  Directories* dirs = &Directories::get();
+  Terminal* terminal = &Terminal::get();
+  add_window(*window);
+  window->show();
   
   std::string last_current_file;
   
   if(directories.empty() && files.empty()) {
     try {
       boost::property_tree::ptree pt;
-      boost::property_tree::read_json((Config::get().juci_home_path()/"last_session.json").string(), pt);
+      boost::property_tree::read_json((config->juci_home_path()/"last_session.json").string(), pt);
       auto folder=pt.get<std::string>("folder");
       if(!folder.empty() && boost::filesystem::exists(folder) && boost::filesystem::is_directory(folder))
         directories.emplace_back(folder);
@@ -69,7 +74,7 @@ void Application::on_activate() {
   bool first_directory=true;
   for(auto &directory: directories) {
     if(first_directory) {
-      Directories::get().open(directory);
+      dirs->open(directory);
       first_directory=false;
     }
     else {
@@ -82,41 +87,43 @@ void Application::on_activate() {
         else
           it++;
       }
-      std::thread another_juci_app([this, directory, files_in_directory](){
-        Terminal::get().async_print("Executing: juci "+directory.string()+files_in_directory+"\n");
-        Terminal::get().process("juci "+directory.string()+files_in_directory, "", false);
+      std::thread another_juci_app([this, directory, files_in_directory, terminal](){
+        terminal->async_print("Executing: juci "+directory.string()+files_in_directory+"\n");
+        terminal->process("juci "+directory.string()+files_in_directory, "", false);
       });
       another_juci_app.detach();
     }
   }
   
   for(auto &file: files)
-    Notebook::get().open(file);
+    notebook->open(file);
   
   for(auto &error: errors)
-    Terminal::get().print(error, true);
+    terminal->print(error, true);
   
   if(!last_current_file.empty())
-    Notebook::get().open(last_current_file);
+    notebook->open(last_current_file);
 }
 
 void Application::on_startup() {
   Gtk::Application::on_startup();
+  Menu* menu = &Menu::get();
   
-  Menu::get().build();
+  menu->build();
 
-  if (!Menu::get().juci_menu || !Menu::get().window_menu) {
+  if (!menu->juci_menu || !menu->window_menu) {
     std::cerr << "Menu not found." << std::endl;
   }
   else {
-    set_app_menu(Menu::get().juci_menu);
-    set_menubar(Menu::get().window_menu);
+    set_app_menu(menu->juci_menu);
+    set_menubar(menu->window_menu);
   }
 }
 
 Application::Application() : Gtk::Application("no.sout.juci", Gio::APPLICATION_NON_UNIQUE | Gio::APPLICATION_HANDLES_COMMAND_LINE) {
+  Config* config = &Config::get();
   boost::log::add_common_attributes();
-  auto log_dir = Config::get().juci_home_path()/"log"/"juci.log";
+  auto log_dir = config->juci_home_path()/"log"/"juci.log";
   boost::log::add_file_log(boost::log::keywords::file_name = log_dir, boost::log::keywords::auto_flush = true);
   JINFO("Logging initalized");
   

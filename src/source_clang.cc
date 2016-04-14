@@ -25,16 +25,18 @@ clang::Index Source::ClangViewParse::clang_index(0, 0);
 Source::ClangViewParse::ClangViewParse(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language):
 Source::View(file_path, language) {
   JDEBUG("start");
+  Terminal* terminal = &Terminal::get();
+  Config* config = &Config::get();
   
   auto tag_table=get_buffer()->get_tag_table();
-  for (auto &item : Config::get().source.clang_types) {
+  for (auto &item : config->source.clang_types) {
     if(!tag_table->lookup(item.second)) {
       get_buffer()->create_tag(item.second);
     }
   }
   configure();
   
-  parsing_in_progress=Terminal::get().print_in_progress("Parsing "+file_path.string());
+  parsing_in_progress=terminal->print_in_progress("Parsing "+file_path.string());
   parse_initialize();
   
   get_buffer()->signal_changed().connect([this]() {
@@ -48,10 +50,11 @@ Source::View(file_path, language) {
 
 void Source::ClangViewParse::configure() {
   Source::View::configure();
+  Config* config = &Config::get();
   
   auto scheme = get_source_buffer()->get_style_scheme();
   auto tag_table=get_buffer()->get_tag_table();
-  for (auto &item : Config::get().source.clang_types) {
+  for (auto &item : config->source.clang_types) {
     auto tag = get_buffer()->get_tag_table()->lookup(item.second);
     if(tag) {
       auto style = scheme->get_style(item.second);
@@ -73,6 +76,7 @@ void Source::ClangViewParse::configure() {
 }
 
 void Source::ClangViewParse::parse_initialize() {
+  Terminal* terminal = &Terminal::get();
   type_tooltips.hide();
   diagnostic_tooltips.hide();
   parsed=false;
@@ -99,7 +103,7 @@ void Source::ClangViewParse::parse_initialize() {
   update_syntax();
   
   set_status("parsing...");
-  parse_thread=std::thread([this]() {
+  parse_thread=std::thread([this, terminal]() {
     while(true) {
       while(parse_state==ParseState::PROCESSING && parse_process_state!=ParseProcessState::STARTING && parse_process_state!=ParseProcessState::PROCESSING)
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
@@ -148,8 +152,8 @@ void Source::ClangViewParse::parse_initialize() {
         else {
           parse_state=ParseState::STOP;
           parse_lock.unlock();
-          dispatcher.post([this] {
-            Terminal::get().print("Error: failed to reparse "+this->file_path.string()+".\n", true);
+          dispatcher.post([this, terminal] {
+            terminal->print("Error: failed to reparse "+this->file_path.string()+".\n", true);
             set_status("");
             set_info("");
             parsing_in_progress->cancel("failed");
@@ -201,8 +205,8 @@ std::vector<std::string> Source::ClangViewParse::get_compilation_commands() {
     arguments.emplace_back("-I/Library/Developer/CommandLineTools/usr/bin/../include/c++/v1"); //Added for OS X 10.11
 #endif
 #ifdef _WIN32
-    if(!Config::get().terminal.msys2_mingw_path.empty())
-      arguments.emplace_back("-I"+(Config::get().terminal.msys2_mingw_path/"lib/clang"/clang_version/"include").string());
+    if(!config->terminal.msys2_mingw_path.empty())
+      arguments.emplace_back("-I"+(config->terminal.msys2_mingw_path/"lib/clang"/clang_version/"include").string());
 #endif
   }
   arguments.emplace_back("-fretain-comments-from-system-headers");
@@ -213,6 +217,7 @@ std::vector<std::string> Source::ClangViewParse::get_compilation_commands() {
 }
 
 void Source::ClangViewParse::update_syntax() {
+  Config* config = &Config::get();
   std::vector<TokenRange> ranges;
   for (auto &token : *clang_tokens) {
     //if(token.get_kind()==0) // PunctuationToken
@@ -240,8 +245,8 @@ void Source::ClangViewParse::update_syntax() {
     buffer->remove_tag_by_name(tag, buffer->begin(), buffer->end());
   last_syntax_tags.clear();
   for (auto &range : ranges) {
-    auto type_it=Config::get().source.clang_types.find(std::to_string(range.kind));
-    if(type_it!=Config::get().source.clang_types.end()) {
+    auto type_it=config->source.clang_types.find(std::to_string(range.kind));
+    if(type_it!=config->source.clang_types.end()) {
       last_syntax_tags.emplace(type_it->second);
       Gtk::TextIter begin_iter = buffer->get_iter_at_line_index(range.offsets.first.line-1, range.offsets.first.index-1);
       Gtk::TextIter end_iter  = buffer->get_iter_at_line_index(range.offsets.second.line-1, range.offsets.second.index-1);
@@ -367,6 +372,7 @@ void Source::ClangViewParse::show_diagnostic_tooltips(const Gdk::Rectangle &rect
 }
 
 void Source::ClangViewParse::show_type_tooltips(const Gdk::Rectangle &rectangle) {
+  Debug::Clang* debugclang = &Debug::Clang::get();
   if(parsed) {
     Gtk::TextIter iter;
     int location_x, location_y;
@@ -405,7 +411,7 @@ void Source::ClangViewParse::show_type_tooltips(const Gdk::Rectangle &rectangle)
             continue;
           auto start=get_buffer()->get_iter_at_line_index(token.offsets.first.line-1, token.offsets.first.index-1);
           auto end=get_buffer()->get_iter_at_line_index(token.offsets.second.line-1, token.offsets.second.index-1);
-          auto create_tooltip_buffer=[this, &token]() {
+          auto create_tooltip_buffer=[this, &token, debugclang]() {
             auto tooltip_buffer=Gtk::TextBuffer::create(get_buffer()->get_tag_table());
             tooltip_buffer->insert_with_tag(tooltip_buffer->get_insert()->get_iter(), "Type: "+token.get_cursor().get_type(), "def:note");
             auto brief_comment=token.get_cursor().get_brief_comments();
@@ -413,7 +419,7 @@ void Source::ClangViewParse::show_type_tooltips(const Gdk::Rectangle &rectangle)
               tooltip_buffer->insert_with_tag(tooltip_buffer->get_insert()->get_iter(), "\n\n"+brief_comment, "def:note");
 
 #ifdef JUCI_ENABLE_DEBUG
-            if(Debug::Clang::get().is_stopped()) {
+            if(debugclang->is_stopped()) {
               auto location=token.get_cursor().get_referenced().get_source_location();
               Glib::ustring value_type="Value";
               
@@ -435,12 +441,12 @@ void Source::ClangViewParse::show_type_tooltips(const Gdk::Rectangle &rectangle)
               }
               auto spelling=get_buffer()->get_text(start, end).raw();
               
-              Glib::ustring debug_value=Debug::Clang::get().get_value(spelling, location.get_path(), location.get_offset().line, location.get_offset().index);
+              Glib::ustring debug_value=debugclang->get_value(spelling, location.get_path(), location.get_offset().line, location.get_offset().index);
               if(debug_value.empty()) {
                 value_type="Return value";
                 auto cursor=token.get_cursor();
                 auto offsets=cursor.get_source_range().get_offsets();
-                debug_value=Debug::Clang::get().get_return_value(cursor.get_source_location().get_path(), offsets.first.line, offsets.first.index);
+                debug_value=debugclang->get_return_value(cursor.get_source_location().get_path(), offsets.first.line, offsets.first.index);
               }
               if(!debug_value.empty()) {
                 size_t pos=debug_value.find(" = ");
@@ -646,6 +652,7 @@ void Source::ClangViewAutocomplete::autocomplete_check() {
 }
 
 void Source::ClangViewAutocomplete::autocomplete() {
+  Terminal* terminal = &Terminal::get();
   if(parse_state!=ParseState::PROCESSING)
     return;
   
@@ -671,7 +678,7 @@ void Source::ClangViewAutocomplete::autocomplete() {
     column_nr--;
     pos--;
   }
-  autocomplete_thread=std::thread([this, line_nr, column_nr, buffer](){
+  autocomplete_thread=std::thread([this, line_nr, column_nr, buffer, terminal](){
     std::unique_lock<std::mutex> lock(parse_mutex);
     if(parse_state==ParseState::PROCESSING) {
       parse_process_state=ParseProcessState::IDLE;
@@ -724,8 +731,8 @@ void Source::ClangViewAutocomplete::autocomplete() {
         });
       }
       else {
-        dispatcher.post([this] {
-          Terminal::get().print("Error: autocomplete failed, reparsing "+this->file_path.string()+"\n", true);
+        dispatcher.post([this, terminal] {
+          terminal->print("Error: autocomplete failed, reparsing "+this->file_path.string()+"\n", true);
           autocomplete_state=AutocompleteState::CANCELED;
           full_reparse();
         });

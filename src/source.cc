@@ -83,14 +83,16 @@ std::string Source::FixIt::string(Glib::RefPtr<Gtk::TextBuffer> buffer) {
 AspellConfig* Source::View::spellcheck_config=NULL;
 
 Source::View::View(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language): file_path(file_path), language(language) {
+  Terminal* terminal = &Terminal::get();
+  Config* config = &Config::get();
   get_source_buffer()->begin_not_undoable_action();
   if(language) {
     if(filesystem::read_non_utf8(file_path, get_buffer())==-1)
-      Terminal::get().print("Warning: "+file_path.string()+" is not a valid UTF-8 file. Saving might corrupt the file.\n");
+      terminal->print("Warning: "+file_path.string()+" is not a valid UTF-8 file. Saving might corrupt the file.\n");
   }
   else {
     if(filesystem::read(file_path, get_buffer())==-1)
-      Terminal::get().print("Error: "+file_path.string()+" is not a valid UTF-8 file.\n", true);
+      terminal->print("Error: "+file_path.string()+" is not a valid UTF-8 file.\n", true);
   }
   get_source_buffer()->end_not_undoable_action();
   
@@ -273,9 +275,9 @@ Source::View::View(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::L
   set_tooltip_and_dialog_events();
   
   set_tab_width(4); //Visual size of a \t hardcoded to be equal to visual size of 4 spaces
-  tab_char=Config::get().source.default_tab_char;
-  tab_size=Config::get().source.default_tab_size;
-  if(Config::get().source.auto_tab_char_and_size) {
+  tab_char=config->source.default_tab_char;
+  tab_size=config->source.default_tab_size;
+  if(config->source.auto_tab_char_and_size) {
     auto tab_char_and_size=find_tab_char_and_size();
     if(tab_char_and_size.first!=0) {
       if(tab_char!=tab_char_and_size.first || tab_size!=tab_char_and_size.second) {
@@ -302,8 +304,8 @@ Source::View::View(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::L
                   language->get_id()=="c-sharp")) {
     is_bracket_language=true;
     
-    auto_indent=[this]() {
-      auto command=Config::get().terminal.clang_format_command;
+    auto_indent=[this, terminal, config]() {
+      auto command=config->terminal.clang_format_command;
       bool use_style_file=false;
       
       auto style_file_search_path=this->file_path.parent_path();
@@ -333,14 +335,14 @@ Source::View::View(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::L
         command+=" -style=\"{IndentWidth: "+std::to_string(indent_width);
         command+=", "+tab_style;
         command+=", "+std::string("AccessModifierOffset: -")+std::to_string(indent_width);
-        if(Config::get().source.clang_format_style!="")
-          command+=", "+Config::get().source.clang_format_style;
+        if(config->source.clang_format_style!="")
+          command+=", "+config->source.clang_format_style;
         command+="}\"";
       }
       
       std::stringstream stdin_stream(get_buffer()->get_text()), stdout_stream;
       
-      auto exit_status=Terminal::get().process(stdin_stream, stdout_stream, command, this->file_path.parent_path());
+      auto exit_status=terminal->process(stdin_stream, stdout_stream, command, this->file_path.parent_path());
       if(exit_status==0) {
         get_source_buffer()->begin_user_action();
         auto iter=get_buffer()->get_insert()->get_iter();
@@ -377,26 +379,28 @@ void Source::View::set_tab_char_and_size(char tab_char, unsigned tab_size) {
 
 void Source::View::configure() {
   //TODO: Move this to notebook? Might take up too much memory doing this for every tab.
+  Config* config = &Config::get();
+  Terminal* terminal = &Terminal::get();
   auto style_scheme_manager=Gsv::StyleSchemeManager::get_default();
-  style_scheme_manager->prepend_search_path((Config::get().juci_home_path()/"styles").string());
+  style_scheme_manager->prepend_search_path((config->juci_home_path()/"styles").string());
   
-  if(Config::get().source.style.size()>0) {
-    auto scheme = style_scheme_manager->get_scheme(Config::get().source.style);
+  if(config->source.style.size()>0) {
+    auto scheme = style_scheme_manager->get_scheme(config->source.style);
   
     if(scheme)
       get_source_buffer()->set_style_scheme(scheme);
     else
-      Terminal::get().print("Error: Could not find gtksourceview style: "+Config::get().source.style+'\n', true);
+      terminal->print("Error: Could not find gtksourceview style: "+config->source.style+'\n', true);
   }
   
-  if(Config::get().source.wrap_lines)
+  if(config->source.wrap_lines)
     set_wrap_mode(Gtk::WrapMode::WRAP_CHAR);
   else
     set_wrap_mode(Gtk::WrapMode::WRAP_NONE);
-  property_highlight_current_line() = Config::get().source.highlight_current_line;
-  property_show_line_numbers() = Config::get().source.show_line_numbers;
-  if(Config::get().source.font.size()>0)
-    override_font(Pango::FontDescription(Config::get().source.font));
+  property_highlight_current_line() = config->source.highlight_current_line;
+  property_show_line_numbers() = config->source.show_line_numbers;
+  if(config->source.font.size()>0)
+    override_font(Pango::FontDescription(config->source.font));
 #if GTKSOURCEVIEWMM_MAJOR_VERSION > 2 & GTKSOURCEVIEWMM_MINOR_VERSION > 15
   gtk_source_view_set_background_pattern(this->gobj(), GTK_SOURCE_BACKGROUND_PATTERN_TYPE_GRID);
 #endif
@@ -453,8 +457,8 @@ void Source::View::configure() {
     note_tag->property_foreground()=style->property_foreground();
   }
     
-  if(Config::get().source.spellcheck_language.size()>0) {
-    aspell_config_replace(spellcheck_config, "lang", Config::get().source.spellcheck_language.c_str());
+  if(config->source.spellcheck_language.size()>0) {
+    aspell_config_replace(spellcheck_config, "lang", config->source.spellcheck_language.c_str());
     aspell_config_replace(spellcheck_config, "encoding", "utf-8");
   }
   spellcheck_possible_err=new_aspell_speller(spellcheck_config);
@@ -1748,6 +1752,7 @@ std::vector<std::string> Source::View::spellcheck_get_suggestions(const Gtk::Tex
 //// GenericView ////
 /////////////////////
 Source::GenericView::GenericView(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language) : View(file_path, language) {
+  Terminal* terminal = &Terminal::get();
   configure();
   spellcheck_all=true;
   
@@ -1783,7 +1788,7 @@ Source::GenericView::GenericView(const boost::filesystem::path &file_path, Glib:
         boost::property_tree::xml_parser::read_xml(language_file.string(), pt);
       }
       catch(const std::exception &e) {
-        Terminal::get().print("Error: error parsing language file "+language_file.string()+": "+e.what()+'\n', true);
+        terminal->print("Error: error parsing language file "+language_file.string()+": "+e.what()+'\n', true);
       }
       bool has_context_class=false;
       parse_language_file(completion_buffer_keywords, has_context_class, pt);

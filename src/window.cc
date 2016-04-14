@@ -24,6 +24,10 @@ namespace sigc {
 }
 
 Window::Window() : notebook(Notebook::get()) {
+  Directories* directories = &Directories::get();
+  Terminal* terminal = &Terminal::get();
+  Config* config = &Config::get();
+  EntryBox* entrybox = &EntryBox::get();
   JDEBUG("start");
   set_title("juCi++");
   set_events(Gdk::POINTER_MOTION_MASK|Gdk::FOCUS_CHANGE_MASK|Gdk::SCROLL_MASK|Gdk::LEAVE_NOTIFY_MASK);
@@ -31,22 +35,22 @@ Window::Window() : notebook(Notebook::get()) {
   set_menu_actions();
     
   configure();
-  set_default_size(Config::get().window.default_size.first, Config::get().window.default_size.second);
+  set_default_size(config->window.default_size.first, config->window.default_size.second);
   
   //PluginApi(&this->notebook, &this->menu);
   
   add(vpaned);
   
-  directories_scrolled_window.add(Directories::get());
+  directories_scrolled_window.add(*directories);
   directory_and_notebook_panes.pack1(directories_scrolled_window, Gtk::SHRINK);
   notebook_vbox.pack_start(notebook);
-  notebook_vbox.pack_end(EntryBox::get(), Gtk::PACK_SHRINK);
+  notebook_vbox.pack_end(*entrybox, Gtk::PACK_SHRINK);
   directory_and_notebook_panes.pack2(notebook_vbox, Gtk::SHRINK);
-  directory_and_notebook_panes.set_position(static_cast<int>(0.2*Config::get().window.default_size.first));
-  vpaned.set_position(static_cast<int>(0.75*Config::get().window.default_size.second));
+  directory_and_notebook_panes.set_position(static_cast<int>(0.2*config->window.default_size.first));
+  vpaned.set_position(static_cast<int>(0.75*config->window.default_size.second));
   vpaned.pack1(directory_and_notebook_panes, true, false);
   
-  terminal_scrolled_window.add(Terminal::get());
+  terminal_scrolled_window.add(*terminal);
   terminal_vbox.pack_start(terminal_scrolled_window);
     
   info_and_status_hbox.pack_start(notebook.info, Gtk::PACK_SHRINK);
@@ -63,50 +67,50 @@ Window::Window() : notebook(Notebook::get()) {
   
   show_all_children();
 
-  Directories::get().on_row_activated=[this](const boost::filesystem::path &path) {
+  directories->on_row_activated=[this](const boost::filesystem::path &path) {
     notebook.open(path);
   };
 
   //Scroll to end of terminal whenever info is printed
-  Terminal::get().signal_size_allocate().connect([this](Gtk::Allocation& allocation){
+  terminal->signal_size_allocate().connect([this, terminal](Gtk::Allocation& allocation){
     auto adjustment=terminal_scrolled_window.get_vadjustment();
     adjustment->set_value(adjustment->get_upper()-adjustment->get_page_size());
-    Terminal::get().queue_draw();
+    terminal->queue_draw();
   });
 
-  EntryBox::get().signal_show().connect([this](){
+  entrybox->signal_show().connect([this, entrybox](){
     vpaned.set_focus_chain({&directory_and_notebook_panes});
     directory_and_notebook_panes.set_focus_chain({&notebook_vbox});
-    notebook_vbox.set_focus_chain({&EntryBox::get()});
+    notebook_vbox.set_focus_chain({entrybox});
   });
-  EntryBox::get().signal_hide().connect([this](){
+  entrybox->signal_hide().connect([this](){
     vpaned.unset_focus_chain();
     directory_and_notebook_panes.unset_focus_chain();
     notebook_vbox.unset_focus_chain();
   });
-  EntryBox::get().signal_hide().connect([this]() {
+  entrybox->signal_hide().connect([this]() {
     if(notebook.get_current_page()!=-1) {
       notebook.get_current_view()->grab_focus();
     }
   });
 
-  notebook.signal_switch_page().connect([this](Gtk::Widget* page, guint page_num) {
+  notebook.signal_switch_page().connect([this, entrybox, directories, terminal](Gtk::Widget* page, guint page_num) {
     if(notebook.get_current_page()!=-1) {
       auto view=notebook.get_current_view();
-      if(search_entry_shown && EntryBox::get().labels.size()>0) {
-        view->update_search_occurrences=[this](int number){
-          EntryBox::get().labels.begin()->update(0, std::to_string(number));
+      if(search_entry_shown && entrybox->labels.size()>0) {
+        view->update_search_occurrences=[this, entrybox, directories](int number){
+          entrybox->labels.begin()->update(0, std::to_string(number));
         };
         view->search_highlight(last_search, case_sensitive_search, regex_search);
       }
 
       activate_menu_items();
       
-      Directories::get().select(view->file_path);
+      directories->select(view->file_path);
       
       if(view->full_reparse_needed) {
         if(!view->full_reparse())
-          Terminal::get().async_print("Error: failed to reparse "+view->file_path.string()+". Please reopen the file manually.\n", true);
+          terminal->async_print("Error: failed to reparse "+view->file_path.string()+". Please reopen the file manually.\n", true);
       }
       else if(view->soft_reparse_needed)
         view->soft_reparse();
@@ -115,15 +119,15 @@ Window::Window() : notebook(Notebook::get()) {
       view->set_info(view->info);
     }
   });
-  notebook.signal_page_removed().connect([this](Gtk::Widget* page, guint page_num) {
-    EntryBox::get().hide();
+  notebook.signal_page_removed().connect([this, entrybox](Gtk::Widget* page, guint page_num) {
+    entrybox->hide();
   });
   
   about.signal_response().connect([this](int d){
     about.hide();
   });
   
-  about.set_version(Config::get().window.version);
+  about.set_version(config->window.version);
   about.set_authors({"(in order of appearance)",
                      "Ted Johan Kristoffersen", 
                      "Jørgen Lien Sellæg",
@@ -138,66 +142,75 @@ Window::Window() : notebook(Notebook::get()) {
 } // Window constructor
 
 void Window::configure() {
-  Config::get().load();
+  Config* config = &Config::get();
+  Directories* directories = &Directories::get();
+  Menu* menu = &Menu::get();
+  Terminal* terminal = &Terminal::get();
+  
+  config->load();
   auto style_context = Gtk::StyleContext::create();
   auto screen = Gdk::Screen::get_default();
-  auto css_provider = Gtk::CssProvider::get_named(Config::get().window.theme_name, Config::get().window.theme_variant);
+  auto css_provider = Gtk::CssProvider::get_named(config->window.theme_name, config->window.theme_variant);
   //TODO: add check if theme exists, or else write error to terminal
   style_context->add_provider_for_screen(screen, css_provider, GTK_STYLE_PROVIDER_PRIORITY_SETTINGS);
-  Directories::get().update();
-  Menu::get().set_keys();
-  Terminal::get().configure();
+  directories->update();
+  menu->set_keys();
+  terminal->configure();
 }
 
 void Window::set_menu_actions() {
   auto &menu = Menu::get();
+  EntryBox* entrybox = &EntryBox::get();
+  Terminal* terminal = &Terminal::get();
+  Config* config = &Config::get();
+  Directories* directories = &Directories::get();
   
   menu.add_action("about", [this]() {
     about.show();
     about.present();
   });
-  menu.add_action("preferences", [this]() {
-    notebook.open(Config::get().juci_home_path()/"config"/"config.json");
+  menu.add_action("preferences", [this, config]() {
+    notebook.open(config->juci_home_path()/"config"/"config.json");
   });
   menu.add_action("quit", [this]() {
     close();
   });
   
-  menu.add_action("new_file", [this]() {
+  menu.add_action("new_file", [this, terminal, directories]() {
     boost::filesystem::path path = Dialog::new_file(notebook.get_current_folder());
     if(path!="") {
       if(boost::filesystem::exists(path)) {
-        Terminal::get().print("Error: "+path.string()+" already exists.\n", true);
+        terminal->print("Error: "+path.string()+" already exists.\n", true);
       }
       else {
         if(filesystem::write(path)) {
-          if(Directories::get().path!="")
-            Directories::get().update();
+          if(directories->path!="")
+            directories->update();
           notebook.open(path);
-          Terminal::get().print("New file "+path.string()+" created.\n");
+          terminal->print("New file "+path.string()+" created.\n");
         }
         else
-          Terminal::get().print("Error: could not create new file "+path.string()+".\n", true);
+          terminal->print("Error: could not create new file "+path.string()+".\n", true);
       }
     }
   });
-  menu.add_action("new_folder", [this]() {
+  menu.add_action("new_folder", [this, entrybox, terminal, directories]() {
     auto time_now=std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
     boost::filesystem::path path = Dialog::new_folder(notebook.get_current_folder());
     if(path!="" && boost::filesystem::exists(path)) {
       boost::system::error_code ec;
       auto last_write_time=boost::filesystem::last_write_time(path, ec);
       if(!ec && last_write_time>=time_now) {
-        if(Directories::get().path!="")
-          Directories::get().update();
-        Terminal::get().print("New folder "+path.string()+" created.\n");
+        if(directories->path!="")
+          directories->update();
+        terminal->print("New folder "+path.string()+" created.\n");
       }
       else
-        Terminal::get().print("Error: "+path.string()+" already exists.\n", true);
-      Directories::get().select(path);
+        terminal->print("Error: "+path.string()+" already exists.\n", true);
+      directories->select(path);
     }
   });
-  menu.add_action("new_project_cpp", [this]() {
+  menu.add_action("new_project_cpp", [this, entrybox, terminal, directories]() {
     boost::filesystem::path project_path = Dialog::new_folder(notebook.get_current_folder());
     if(project_path!="") {
       auto project_name=project_path.filename().string();
@@ -210,22 +223,22 @@ void Window::set_menu_actions() {
       auto cpp_main_path=project_path;
       cpp_main_path/="main.cpp";
       if(boost::filesystem::exists(cmakelists_path)) {
-        Terminal::get().print("Error: "+cmakelists_path.string()+" already exists.\n", true);
+        terminal->print("Error: "+cmakelists_path.string()+" already exists.\n", true);
         return;
       }
       if(boost::filesystem::exists(cpp_main_path)) {
-        Terminal::get().print("Error: "+cpp_main_path.string()+" already exists.\n", true);
+        terminal->print("Error: "+cpp_main_path.string()+" already exists.\n", true);
         return;
       }
       std::string cmakelists="cmake_minimum_required(VERSION 2.8)\n\nproject("+project_name+")\n\nset(CMAKE_CXX_FLAGS \"${CMAKE_CXX_FLAGS} -std=c++1y -Wall\")\n\nadd_executable("+project_name+" main.cpp)\n";
       std::string cpp_main="#include <iostream>\n\nusing namespace std;\n\nint main() {\n  cout << \"Hello World!\" << endl;\n\n  return 0;\n}\n";
       if(filesystem::write(cmakelists_path, cmakelists) && filesystem::write(cpp_main_path, cpp_main)) {
-        Directories::get().open(project_path);
+        directories->open(project_path);
         notebook.open(cpp_main_path);
-        Terminal::get().print("C++ project "+project_name+" created.\n");
+        terminal->print("C++ project "+project_name+" created.\n");
       }
       else
-        Terminal::get().print("Error: Could not create project "+project_path.string()+"\n", true);
+        terminal->print("Error: Could not create project "+project_path.string()+"\n", true);
     }
   });
   
@@ -234,17 +247,17 @@ void Window::set_menu_actions() {
     if(path!="")
       notebook.open(path);
   });
-  menu.add_action("open_folder", [this]() {
+  menu.add_action("open_folder", [this, directories]() {
     auto path = Dialog::open_folder(notebook.get_current_folder());
     if (path!="" && boost::filesystem::exists(path))
-      Directories::get().open(path);
+      directories->open(path);
   });
   
-  menu.add_action("save", [this]() {
+  menu.add_action("save", [this, config]() {
     if(notebook.get_current_page()!=-1) {
       if(notebook.save_current()) {
         if(notebook.get_current_page()!=-1) {
-          if(notebook.get_current_view()->file_path==Config::get().juci_home_path()/"config"/"config.json") {
+          if(notebook.get_current_view()->file_path==config->juci_home_path()/"config"/"config.json") {
             configure();
             for(int c=0;c<notebook.size();c++) {
               notebook.get_view(c)->configure();
@@ -255,7 +268,7 @@ void Window::set_menu_actions() {
       }
     }
   });
-  menu.add_action("save_as", [this]() {
+  menu.add_action("save_as", [this, terminal, directories]() {
     if(notebook.get_current_page()!=-1) {
       auto path = Dialog::save_file_as(notebook.get_current_view()->file_path);
       if(path!="") {
@@ -263,13 +276,13 @@ void Window::set_menu_actions() {
         if(file) {
           file << notebook.get_current_view()->get_buffer()->get_text();
           file.close();
-          if(Directories::get().path!="")
-            Directories::get().update();
+          if(directories->path!="")
+            directories->update();
           notebook.open(path);
-          Terminal::get().print("File saved to: " + notebook.get_current_view()->file_path.string()+"\n");
+          terminal->print("File saved to: " + notebook.get_current_view()->file_path.string()+"\n");
         }
         else
-          Terminal::get().print("Error saving file\n");
+          terminal->print("Error saving file\n");
       }
     }
   });
@@ -295,7 +308,7 @@ void Window::set_menu_actions() {
     }
   });
   
-  menu.add_action("edit_undo", [this]() {
+  menu.add_action("edit_undo", [this, terminal]() {
     if(notebook.get_current_page()!=-1) {
       auto undo_manager = notebook.get_current_view()->get_source_buffer()->get_undo_manager();
       if (undo_manager->can_undo()) {
@@ -372,13 +385,13 @@ void Window::set_menu_actions() {
     }
   });
   
-  menu.add_action("source_find_documentation", [this]() {
+  menu.add_action("source_find_documentation", [this, terminal, config]() {
     if(notebook.get_current_page()!=-1) {
       if(notebook.get_current_view()->get_token_data) {
         auto data=notebook.get_current_view()->get_token_data();        
         if(data.size()>0) {
-          auto documentation_search=Config::get().source.documentation_searches.find(data[0]);
-          if(documentation_search!=Config::get().source.documentation_searches.end()) {
+          auto documentation_search=config->source.documentation_searches.find(data[0]);
+          if(documentation_search!=config->source.documentation_searches.end()) {
             std::string token_query;
             for(size_t c=1;c<data.size();c++) {
               if(data[c].size()>0) {
@@ -399,7 +412,7 @@ void Window::set_menu_actions() {
               if(query!=documentation_search->second.queries.end()) {
                 std::string uri=query->second+token_query;
 #ifdef __APPLE__
-                Terminal::get().process("open \""+uri+"\"");
+                terminal->process("open \""+uri+"\"");
 #else
                 GError* error=NULL;
                 gtk_show_uri(NULL, uri.c_str(), GDK_CURRENT_TIME, &error);
@@ -522,114 +535,114 @@ void Window::set_menu_actions() {
     }
   });
   
-  menu.add_action("project_set_run_arguments", [this]() {
+  menu.add_action("project_set_run_arguments", [this, entrybox]() {
     auto project_language=Project::get_language();
     auto run_arguments=std::make_shared<std::pair<std::string, std::string> >(project_language->get_run_arguments());
     if(run_arguments->second.empty())
       return;
     
-    EntryBox::get().clear();
-    EntryBox::get().labels.emplace_back();
-    auto label_it=EntryBox::get().labels.begin();
+    entrybox->clear();
+    entrybox->labels.emplace_back();
+    auto label_it=entrybox->labels.begin();
     label_it->update=[label_it](int state, const std::string& message){
       label_it->set_text("Set empty to let juCi++ deduce executable");
     };
     label_it->update(0, "");
-    EntryBox::get().entries.emplace_back(run_arguments->second, [this, run_arguments](const std::string& content){
+    entrybox->entries.emplace_back(run_arguments->second, [this, run_arguments, entrybox](const std::string& content){
       Project::run_arguments[run_arguments->first]=content;
-      EntryBox::get().hide();
+      entrybox->hide();
     }, 50);
-    auto entry_it=EntryBox::get().entries.begin();
+    auto entry_it=entrybox->entries.begin();
     entry_it->set_placeholder_text("Project: Set Run Arguments");
-    EntryBox::get().buttons.emplace_back("Project: set run arguments", [this, entry_it](){
+    entrybox->buttons.emplace_back("Project: set run arguments", [this, entry_it](){
       entry_it->activate();
     });
-    EntryBox::get().show();
+    entrybox->show();
   });
-  menu.add_action("compile_and_run", [this]() {
+  menu.add_action("compile_and_run", [this, config]() {
     if(Project::compiling || Project::debugging)
       return;
     
     Project::current_language=Project::get_language();
     
-    if(Config::get().project.save_on_compile_or_run)
+    if(config->project.save_on_compile_or_run)
       Project::save_files(Project::current_language->build->project_path);
     
     Project::current_language->compile_and_run();
   });
-  menu.add_action("compile", [this]() {
+  menu.add_action("compile", [this, config]() {
     if(Project::compiling || Project::debugging)
       return;
             
     Project::current_language=Project::get_language();
     
-    if(Config::get().project.save_on_compile_or_run)
+    if(config->project.save_on_compile_or_run)
       Project::save_files(Project::current_language->build->project_path);
     
     Project::current_language->compile();
   });
   
-  menu.add_action("run_command", [this]() {
-    EntryBox::get().clear();
-    EntryBox::get().labels.emplace_back();
-    auto label_it=EntryBox::get().labels.begin();
+  menu.add_action("run_command", [this, entrybox, terminal]() {
+    entrybox->clear();
+    entrybox->labels.emplace_back();
+    auto label_it=entrybox->labels.begin();
     label_it->update=[label_it](int state, const std::string& message){
       label_it->set_text("Run Command directory order: opened directory, file path, current directory");
     };
     label_it->update(0, "");
-    EntryBox::get().entries.emplace_back(last_run_command, [this](const std::string& content){
+    entrybox->entries.emplace_back(last_run_command, [this, entrybox, terminal](const std::string& content){
       if(content!="") {
         last_run_command=content;
         auto run_path=notebook.get_current_folder();
-        Terminal::get().async_print("Running: "+content+'\n');
+        terminal->async_print("Running: "+content+'\n');
   
-        Terminal::get().async_process(content, run_path, [this, content](int exit_status){
-          Terminal::get().async_print(content+" returned: "+std::to_string(exit_status)+'\n');
+        terminal->async_process(content, run_path, [this, content, terminal](int exit_status){
+          terminal->async_print(content+" returned: "+std::to_string(exit_status)+'\n');
         });
       }
-      EntryBox::get().hide();
+      entrybox->hide();
     }, 30);
-    auto entry_it=EntryBox::get().entries.begin();
+    auto entry_it=entrybox->entries.begin();
     entry_it->set_placeholder_text("Command");
-    EntryBox::get().buttons.emplace_back("Run command", [this, entry_it](){
+    entrybox->buttons.emplace_back("Run command", [this, entry_it](){
       entry_it->activate();
     });
-    EntryBox::get().show();
+    entrybox->show();
   });
   
-  menu.add_action("kill_last_running", [this]() {
-    Terminal::get().kill_last_async_process();
+  menu.add_action("kill_last_running", [this, terminal]() {
+    terminal->kill_last_async_process();
   });
-  menu.add_action("force_kill_last_running", [this]() {
-    Terminal::get().kill_last_async_process(true);
+  menu.add_action("force_kill_last_running", [this, terminal]() {
+    terminal->kill_last_async_process(true);
   });
   
 #ifdef JUCI_ENABLE_DEBUG
-  menu.add_action("debug_set_run_arguments", [this]() {
+  menu.add_action("debug_set_run_arguments", [this, entrybox]() {
     auto project_language=Project::get_language();
     auto run_arguments=std::make_shared<std::pair<std::string, std::string> >(project_language->debug_get_run_arguments());
     if(run_arguments->second.empty())
       return;
     
-    EntryBox::get().clear();
-    EntryBox::get().labels.emplace_back();
-    auto label_it=EntryBox::get().labels.begin();
+    entrybox->clear();
+    entrybox->labels.emplace_back();
+    auto label_it=entrybox->labels.begin();
     label_it->update=[label_it](int state, const std::string& message){
       label_it->set_text("Set empty to let juCi++ deduce executable");
     };
     label_it->update(0, "");
-    EntryBox::get().entries.emplace_back(run_arguments->second, [this, run_arguments](const std::string& content){
+    entrybox->entries.emplace_back(run_arguments->second, [this, run_arguments, entrybox](const std::string& content){
       Project::debug_run_arguments[run_arguments->first]=content;
-      EntryBox::get().hide();
+      entrybox->hide();
     }, 50);
-    auto entry_it=EntryBox::get().entries.begin();
+    auto entry_it=entrybox->entries.begin();
     entry_it->set_placeholder_text("Debug: Set Run Arguments");
-    EntryBox::get().buttons.emplace_back("Debug: set run arguments", [this, entry_it](){
+    entrybox->buttons.emplace_back("Debug: set run arguments", [this, entry_it](){
       entry_it->activate();
     });
-    EntryBox::get().show();
+    entrybox->show();
   });
-  menu.add_action("debug_start_continue", [this](){
+  menu.add_action("debug_start_continue", [this, config](){
     if(Project::compiling)
       return;
     else if(Project::debugging) {
@@ -639,7 +652,7 @@ void Window::set_menu_actions() {
         
     Project::current_language=Project::get_language();
     
-    if(Config::get().project.save_on_compile_or_run)
+    if(config->project.save_on_compile_or_run)
       Project::save_files(Project::current_language->build->project_path);
     
     Project::current_language->debug_start();
@@ -672,22 +685,22 @@ void Window::set_menu_actions() {
     if(Project::current_language)
       Project::current_language->debug_show_variables();
   });
-  menu.add_action("debug_run_command", [this]() {
-    EntryBox::get().clear();
-    EntryBox::get().entries.emplace_back(last_run_debug_command, [this](const std::string& content){
+  menu.add_action("debug_run_command", [this, entrybox]() {
+    entrybox->clear();
+    entrybox->entries.emplace_back(last_run_debug_command, [this, entrybox](const std::string& content){
       if(content!="") {
         if(Project::current_language)
           Project::current_language->debug_run_command(content);
         last_run_debug_command=content;
       }
-      EntryBox::get().hide();
+      entrybox->hide();
     }, 30);
-    auto entry_it=EntryBox::get().entries.begin();
+    auto entry_it=entrybox->entries.begin();
     entry_it->set_placeholder_text("Debug Command");
-    EntryBox::get().buttons.emplace_back("Run debug command", [this, entry_it](){
+    entrybox->buttons.emplace_back("Run debug command", [this, entry_it](){
       entry_it->activate();
     });
-    EntryBox::get().show();
+    entrybox->show();
   });
   menu.add_action("debug_toggle_breakpoint", [this](){
     if(notebook.get_current_page()!=-1) {
@@ -791,8 +804,9 @@ void Window::activate_menu_items(bool activate) {
 }
 
 bool Window::on_key_press_event(GdkEventKey *event) {
+  EntryBox* entrybox = &EntryBox::get();
   if(event->keyval==GDK_KEY_Escape) {
-    EntryBox::get().hide();
+    entrybox->hide();
   }
 #ifdef __APPLE__ //For Apple's Command-left, right, up, down keys
   else if((event->state & GDK_META_MASK)>0 && (event->state & GDK_MOD1_MASK)==0) {
@@ -825,9 +839,12 @@ bool Window::on_key_press_event(GdkEventKey *event) {
 }
 
 bool Window::on_delete_event(GdkEventAny *event) {
+  Terminal* terminal = &Terminal::get();
+  Config* config = &Config::get();
+  Directories* directories = &Directories::get();
   try {
     boost::property_tree::ptree pt_root, pt_files;
-    pt_root.put("folder", Directories::get().path.string());
+    pt_root.put("folder", directories->path.string());
     for(int c=0;c<notebook.size();c++) {
       boost::property_tree::ptree pt_child;
       pt_child.put("", notebook.get_view(c)->file_path.string());
@@ -836,7 +853,7 @@ bool Window::on_delete_event(GdkEventAny *event) {
     pt_root.add_child("files", pt_files);
     if(notebook.get_current_page()!=-1)
       pt_root.put("current_file", notebook.get_current_view()->file_path.string());
-    boost::property_tree::write_json((Config::get().juci_home_path()/"last_session.json").string(), pt_root);
+    boost::property_tree::write_json((config->juci_home_path()/"last_session.json").string(), pt_root);
   }
   catch(const std::exception &) {}
   
@@ -845,7 +862,7 @@ bool Window::on_delete_event(GdkEventAny *event) {
     if(!notebook.close_current_page())
       return true;
   }
-  Terminal::get().kill_async_processes();
+  terminal->kill_async_processes();
 #ifdef JUCI_ENABLE_DEBUG
   if(Project::current_language)
     Project::current_language->debug_delete();
@@ -854,9 +871,10 @@ bool Window::on_delete_event(GdkEventAny *event) {
 }
 
 void Window::search_and_replace_entry() {
-  EntryBox::get().clear();
-  EntryBox::get().labels.emplace_back();
-  auto label_it=EntryBox::get().labels.begin();
+  EntryBox* entrybox = &EntryBox::get();
+  entrybox->clear();
+  entrybox->labels.emplace_back();
+  auto label_it=entrybox->labels.begin();
   label_it->update=[label_it](int state, const std::string& message){
     if(state==0) {
       try {
@@ -871,11 +889,11 @@ void Window::search_and_replace_entry() {
       catch(const std::exception &e) {}
     }
   };
-  EntryBox::get().entries.emplace_back(last_search, [this](const std::string& content){
+  entrybox->entries.emplace_back(last_search, [this](const std::string& content){
     if(notebook.get_current_page()!=-1)
       notebook.get_current_view()->search_forward();
   });
-  auto search_entry_it=EntryBox::get().entries.begin();
+  auto search_entry_it=entrybox->entries.begin();
   search_entry_it->set_placeholder_text("Find");
   if(notebook.get_current_page()!=-1) {
     notebook.get_current_view()->update_search_occurrences=[label_it](int number){
@@ -896,11 +914,11 @@ void Window::search_and_replace_entry() {
       notebook.get_current_view()->search_highlight(search_entry_it->get_text(), case_sensitive_search, regex_search);
   });
 
-  EntryBox::get().entries.emplace_back(last_replace, [this](const std::string &content){
+  entrybox->entries.emplace_back(last_replace, [this](const std::string &content){
     if(notebook.get_current_page()!=-1)
       notebook.get_current_view()->replace_forward(content);
   });
-  auto replace_entry_it=EntryBox::get().entries.begin();
+  auto replace_entry_it=entrybox->entries.begin();
   replace_entry_it++;
   replace_entry_it->set_placeholder_text("Replace");
   replace_entry_it->signal_key_press_event().connect([this, replace_entry_it](GdkEventKey* event){
@@ -914,45 +932,45 @@ void Window::search_and_replace_entry() {
     last_replace=replace_entry_it->get_text();
   });
   
-  EntryBox::get().buttons.emplace_back("↑", [this](){
+  entrybox->buttons.emplace_back("↑", [this](){
     if(notebook.get_current_page()!=-1)
         notebook.get_current_view()->search_backward();
   });
-  EntryBox::get().buttons.back().set_tooltip_text("Find Previous\n\nShortcut: Shift+Enter in the Find entry field");
-  EntryBox::get().buttons.emplace_back("⇄", [this, replace_entry_it](){
+  entrybox->buttons.back().set_tooltip_text("Find Previous\n\nShortcut: Shift+Enter in the Find entry field");
+  entrybox->buttons.emplace_back("⇄", [this, replace_entry_it](){
     if(notebook.get_current_page()!=-1) {
       notebook.get_current_view()->replace_forward(replace_entry_it->get_text());
     }
   });
-  EntryBox::get().buttons.back().set_tooltip_text("Replace Next\n\nShortcut: Enter in the Replace entry field");
-  EntryBox::get().buttons.emplace_back("↓", [this](){
+  entrybox->buttons.back().set_tooltip_text("Replace Next\n\nShortcut: Enter in the Replace entry field");
+  entrybox->buttons.emplace_back("↓", [this](){
     if(notebook.get_current_page()!=-1)
       notebook.get_current_view()->search_forward();
   });
-  EntryBox::get().buttons.back().set_tooltip_text("Find Next\n\nShortcut: Enter in the Find entry field");
-  EntryBox::get().buttons.emplace_back("Replace All", [this, replace_entry_it](){
+  entrybox->buttons.back().set_tooltip_text("Find Next\n\nShortcut: Enter in the Find entry field");
+  entrybox->buttons.emplace_back("Replace All", [this, replace_entry_it](){
     if(notebook.get_current_page()!=-1)
       notebook.get_current_view()->replace_all(replace_entry_it->get_text());
   });
-  EntryBox::get().buttons.back().set_tooltip_text("Replace All");
+  entrybox->buttons.back().set_tooltip_text("Replace All");
   
-  EntryBox::get().toggle_buttons.emplace_back("Aa");
-  EntryBox::get().toggle_buttons.back().set_tooltip_text("Match Case");
-  EntryBox::get().toggle_buttons.back().set_active(case_sensitive_search);
-  EntryBox::get().toggle_buttons.back().on_activate=[this, search_entry_it](){
+  entrybox->toggle_buttons.emplace_back("Aa");
+  entrybox->toggle_buttons.back().set_tooltip_text("Match Case");
+  entrybox->toggle_buttons.back().set_active(case_sensitive_search);
+  entrybox->toggle_buttons.back().on_activate=[this, search_entry_it](){
     case_sensitive_search=!case_sensitive_search;
     if(notebook.get_current_page()!=-1)
       notebook.get_current_view()->search_highlight(search_entry_it->get_text(), case_sensitive_search, regex_search);
   };
-  EntryBox::get().toggle_buttons.emplace_back(".*");
-  EntryBox::get().toggle_buttons.back().set_tooltip_text("Use Regex");
-  EntryBox::get().toggle_buttons.back().set_active(regex_search);
-  EntryBox::get().toggle_buttons.back().on_activate=[this, search_entry_it](){
+  entrybox->toggle_buttons.emplace_back(".*");
+  entrybox->toggle_buttons.back().set_tooltip_text("Use Regex");
+  entrybox->toggle_buttons.back().set_active(regex_search);
+  entrybox->toggle_buttons.back().on_activate=[this, search_entry_it](){
     regex_search=!regex_search;
     if(notebook.get_current_page()!=-1)
       notebook.get_current_view()->search_highlight(search_entry_it->get_text(), case_sensitive_search, regex_search);
   };
-  EntryBox::get().signal_hide().connect([this]() {
+  entrybox->signal_hide().connect([this]() {
     for(int c=0;c<notebook.size();c++) {
       notebook.get_view(c)->update_search_occurrences=nullptr;
       notebook.get_view(c)->search_highlight("", case_sensitive_search, regex_search);
@@ -960,19 +978,20 @@ void Window::search_and_replace_entry() {
     search_entry_shown=false;
   });
   search_entry_shown=true;
-  EntryBox::get().show();
+  entrybox->show();
 }
 
 void Window::set_tab_entry() {
-  EntryBox::get().clear();
+  EntryBox* entrybox = &EntryBox::get();
+  entrybox->clear();
   if(notebook.get_current_page()!=-1) {
     auto tab_char_and_size=notebook.get_current_view()->get_tab_char_and_size();
     
-    EntryBox::get().labels.emplace_back();
-    auto label_it=EntryBox::get().labels.begin();
+    entrybox->labels.emplace_back();
+    auto label_it=entrybox->labels.begin();
     
-    EntryBox::get().entries.emplace_back(std::to_string(tab_char_and_size.second));
-    auto entry_tab_size_it=EntryBox::get().entries.begin();
+    entrybox->entries.emplace_back(std::to_string(tab_char_and_size.second));
+    auto entry_tab_size_it=entrybox->entries.begin();
     entry_tab_size_it->set_placeholder_text("Tab size");
     
     char tab_char=tab_char_and_size.first;
@@ -982,11 +1001,11 @@ void Window::set_tab_entry() {
     else if(tab_char=='\t')
       tab_char_string="tab";
       
-    EntryBox::get().entries.emplace_back(tab_char_string);
-    auto entry_tab_char_it=EntryBox::get().entries.rbegin();
+    entrybox->entries.emplace_back(tab_char_string);
+    auto entry_tab_char_it=entrybox->entries.rbegin();
     entry_tab_char_it->set_placeholder_text("Tab char");
     
-    const auto activate_function=[this, entry_tab_char_it, entry_tab_size_it, label_it](const std::string& content){
+    const auto activate_function=[this, entry_tab_char_it, entry_tab_size_it, label_it, entrybox](const std::string& content){
       if(notebook.get_current_page()!=-1) {
         char tab_char=0;
         unsigned tab_size=0;
@@ -1003,7 +1022,7 @@ void Window::set_tab_entry() {
 
         if(tab_char!=0 && tab_size>0) {
           notebook.get_current_view()->set_tab_char_and_size(tab_char, tab_size);
-          EntryBox::get().hide();
+          entrybox->hide();
         }
         else {
           label_it->set_text("Tab size must be >0 and tab char set to either 'space' or 'tab'");
@@ -1014,18 +1033,19 @@ void Window::set_tab_entry() {
     entry_tab_char_it->on_activate=activate_function;
     entry_tab_size_it->on_activate=activate_function;
     
-    EntryBox::get().buttons.emplace_back("Set tab in current buffer", [this, entry_tab_char_it](){
+    entrybox->buttons.emplace_back("Set tab in current buffer", [this, entry_tab_char_it](){
       entry_tab_char_it->activate();
     });
     
-    EntryBox::get().show();
+    entrybox->show();
   }
 }
 
 void Window::goto_line_entry() {
-  EntryBox::get().clear();
+  EntryBox* entrybox = &EntryBox::get();
+  entrybox->clear();
   if(notebook.get_current_page()!=-1) {
-    EntryBox::get().entries.emplace_back("", [this](const std::string& content){
+    entrybox->entries.emplace_back("", [this, entrybox](const std::string& content){
       if(notebook.get_current_page()!=-1) {
         auto view=notebook.get_current_view();
         try {
@@ -1038,31 +1058,33 @@ void Window::goto_line_entry() {
           }
         }
         catch(const std::exception &e) {}  
-        EntryBox::get().hide();
+        entrybox->hide();
       }
     });
-    auto entry_it=EntryBox::get().entries.begin();
+    auto entry_it=entrybox->entries.begin();
     entry_it->set_placeholder_text("Line number");
-    EntryBox::get().buttons.emplace_back("Go to line", [this, entry_it](){
+    entrybox->buttons.emplace_back("Go to line", [this, entry_it](){
       entry_it->activate();
     });
-    EntryBox::get().show();
+    entrybox->show();
   }
 }
 
 void Window::rename_token_entry() {
-  EntryBox::get().clear();
+  EntryBox* entrybox = &EntryBox::get();
+  Terminal* terminal = &Terminal::get();
+  entrybox->clear();
   if(notebook.get_current_page()!=-1) {
     if(notebook.get_current_view()->get_token) {
       auto token=std::make_shared<Source::Token>(notebook.get_current_view()->get_token());
       if(*token) {
-        EntryBox::get().labels.emplace_back();
-        auto label_it=EntryBox::get().labels.begin();
+        entrybox->labels.emplace_back();
+        auto label_it=entrybox->labels.begin();
         label_it->update=[label_it](int state, const std::string& message){
           label_it->set_text("Warning: only opened and parsed tabs will have its content renamed, and modified files will be saved");
         };
         label_it->update(0, "");
-        EntryBox::get().entries.emplace_back(token->spelling, [this, token](const std::string& content){
+        entrybox->entries.emplace_back(token->spelling, [this, token, terminal, entrybox](const std::string& content){
           if(notebook.get_current_page()!=-1 && content!=token->spelling) {
             std::vector<int> modified_pages;
             for(int c=0;c<notebook.size();c++) {
@@ -1070,7 +1092,7 @@ void Window::rename_token_entry() {
               if(view->rename_similar_tokens) {
                 auto number=view->rename_similar_tokens(*token, content);
                 if(number>0) {
-                  Terminal::get().print("Replaced "+std::to_string(number)+" occurrences in file "+view->file_path.string()+"\n");
+                  terminal->print("Replaced "+std::to_string(number)+" occurrences in file "+view->file_path.string()+"\n");
                   notebook.save(c);
                   modified_pages.emplace_back(c);
                 }
@@ -1078,15 +1100,15 @@ void Window::rename_token_entry() {
             }
             for(auto &page: modified_pages)
               notebook.get_view(page)->soft_reparse_needed=false;
-            EntryBox::get().hide();
+            entrybox->hide();
           }
         });
-        auto entry_it=EntryBox::get().entries.begin();
+        auto entry_it=entrybox->entries.begin();
         entry_it->set_placeholder_text("New name");
-        EntryBox::get().buttons.emplace_back("Rename", [this, entry_it](){
+        entrybox->buttons.emplace_back("Rename", [this, entry_it](){
           entry_it->activate();
         });
-        EntryBox::get().show();
+        entrybox->show();
       }
     }
   }

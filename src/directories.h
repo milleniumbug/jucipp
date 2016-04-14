@@ -10,12 +10,15 @@
 #include <atomic>
 #include <unordered_map>
 #include "dispatcher.h"
+#include "notebook.h"
 
 class Directories : public Gtk::TreeView {
 public:
   class TreeStore : public Gtk::TreeStore {
+  private:
+    Notebook* notebook;
   protected:
-    TreeStore() {}
+    TreeStore(Notebook* notebook) : notebook(notebook) {}
     
     bool row_drop_possible_vfunc(const Gtk::TreeModel::Path &path, const Gtk::SelectionData &selection_data) const override;
     bool drag_data_received_vfunc(const TreeModel::Path &path, const Gtk::SelectionData &selection_data) override;
@@ -36,7 +39,7 @@ public:
       Gtk::TreeModelColumn<Gdk::RGBA> color;
     };
     
-    static Glib::RefPtr<TreeStore> create() {return Glib::RefPtr<TreeStore>(new TreeStore());}
+    static Glib::RefPtr<TreeStore> create(Notebook* notebook) {return Glib::RefPtr<TreeStore>(new TreeStore(notebook));}
   };
 
 private:
@@ -78,6 +81,7 @@ private:
   Gtk::MenuItem menu_root_item_new_file;
   Gtk::MenuItem menu_root_item_new_folder;
   boost::filesystem::path menu_popup_row_path;
+  Notebook* notebook;
 };
 
 #endif  // JUCI_DIRECTORIES_H_

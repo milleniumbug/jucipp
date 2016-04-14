@@ -15,12 +15,13 @@ Terminal::InProgress::~InProgress() {
 }
 
 void Terminal::InProgress::start(const std::string& msg) {
-  line_nr=Terminal::get().print(msg+"...\n");
-  wait_thread=std::thread([this](){
+  Terminal* terminal = &Terminal::get();
+  line_nr=terminal->print(msg+"...\n");
+  wait_thread=std::thread([this, terminal](){
     size_t c=0;
     while(!stop) {
       if(c%100==0)
-        Terminal::get().async_print(line_nr-1, ".");
+        terminal->async_print(line_nr-1, ".");
       std::this_thread::sleep_for(std::chrono::milliseconds(10));
       c++;
     }
@@ -28,15 +29,17 @@ void Terminal::InProgress::start(const std::string& msg) {
 }
 
 void Terminal::InProgress::done(const std::string& msg) {
+  Terminal* terminal = &Terminal::get();
   bool expected=false;
   if(stop.compare_exchange_strong(expected, true))
-    Terminal::get().async_print(line_nr-1, msg);
+    terminal->async_print(line_nr-1, msg);
 }
 
 void Terminal::InProgress::cancel(const std::string& msg) {
+  Terminal* terminal = &Terminal::get();
   bool expected=false;
   if(stop.compare_exchange_strong(expected, true))
-    Terminal::get().async_print(line_nr-1, msg);
+    terminal->async_print(line_nr-1, msg);
 }
 
 Terminal::Terminal() {
@@ -150,6 +153,7 @@ void Terminal::kill_async_processes(bool force) {
 }
 
 size_t Terminal::print(const std::string &message, bool bold){
+  Config* config = &Config::get();
 #ifdef _WIN32
   //Remove color codes
   auto message_no_color=message; //copy here since operations on Glib::ustring is too slow
@@ -191,8 +195,8 @@ size_t Terminal::print(const std::string &message, bool bold){
   else
     get_buffer()->insert(get_buffer()->end(), umessage);
   
-  if(get_buffer()->get_line_count()>Config::get().terminal.history_size) {
-    int lines=get_buffer()->get_line_count()-Config::get().terminal.history_size;
+  if(get_buffer()->get_line_count()>config->terminal.history_size) {
+    int lines=get_buffer()->get_line_count()-config->terminal.history_size;
     get_buffer()->erase(get_buffer()->begin(), get_buffer()->get_iter_at_line(lines));
     deleted_lines+=static_cast<size_t>(lines);
   }
@@ -216,8 +220,9 @@ std::shared_ptr<Terminal::InProgress> Terminal::print_in_progress(std::string st
 }
 
 void Terminal::async_print(const std::string &message, bool bold) {
-  dispatcher.post([this, message, bold] {
-    Terminal::get().print(message, bold);
+  Terminal* terminal = &Terminal::get();
+  dispatcher.post([this, message, bold, terminal] {
+    terminal->print(message, bold);
   });
 }
 
@@ -241,11 +246,12 @@ void Terminal::async_print(size_t line_nr, const std::string &message) {
 }
 
 void Terminal::configure() {
-  if(Config::get().terminal.font.size()>0) {
-    override_font(Pango::FontDescription(Config::get().terminal.font));
+  Config* config = &Config::get();
+  if(config->terminal.font.size()>0) {
+    override_font(Pango::FontDescription(config->terminal.font));
   }
-  else if(Config::get().source.font.size()>0) {
-    Pango::FontDescription font_description(Config::get().source.font);
+  else if(config->source.font.size()>0) {
+    Pango::FontDescription font_description(config->source.font);
     auto font_description_size=font_description.get_size();
     if(font_description_size==0) {
       Pango::FontDescription default_font_description(Gtk::Settings::get_default()->property_gtk_font_name());
