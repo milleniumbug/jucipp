@@ -252,18 +252,22 @@ void Window::set_menu_actions() {
               notebook.configure(c);
             }
           }
-          if(file_path>Config::get().python.plugin_directory){
-            auto stem=file_path.stem().string();
-            auto module=Python::get_loaded_module(stem);
-            module=module ? Python::reload(module) : Python::import(stem);
-            if(module)
-              Terminal::get().print("Plugin `"+stem+"` was reloaded\n");
-            else {
-              if(Python::thrown_exception_matches(Python::Error::Type::Syntax))
-                Terminal::get().print(Python::SyntaxError());
-              else
-                Terminal::get().print(Python::Error());
+          while(file_path.has_parent_path()){
+            if(file_path == Config::get().python.plugin_directory){
+              auto stem=file_path.stem().string();
+              auto module=Python::get_loaded_module(stem);
+              module=module ? Python::reload(module) : Python::import(stem);
+              if(module)
+                Terminal::get().print("Plugin `"+stem+"` was reloaded\n");
+              else {
+                if(Python::thrown_exception_matches(Python::Error::Type::Syntax))
+                  Terminal::get().print(Python::SyntaxError());
+                else
+                  Terminal::get().print(Python::Error());
+              }
+              break;
             }
+            file_path=file_path.parent_path();
           }
         }
       }
