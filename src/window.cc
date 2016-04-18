@@ -25,9 +25,10 @@ namespace sigc {
 
 Window::Window() : notebook(Notebook::get()) {
   Directories* directories = &Directories::get();
-  Terminal* terminal = &Terminal::get();
   Config* config = &Config::get();
   EntryBox* entrybox = &EntryBox::get();
+  
+  terminal = &Terminal::get();
   JDEBUG("start");
   set_title("juCi++");
   set_events(Gdk::POINTER_MOTION_MASK|Gdk::FOCUS_CHANGE_MASK|Gdk::SCROLL_MASK|Gdk::LEAVE_NOTIFY_MASK);
@@ -145,7 +146,6 @@ void Window::configure() {
   Config* config = &Config::get();
   Directories* directories = &Directories::get();
   Menu* menu = &Menu::get();
-  Terminal* terminal = &Terminal::get();
   
   config->load();
   auto style_context = Gtk::StyleContext::create();
@@ -161,7 +161,6 @@ void Window::configure() {
 void Window::set_menu_actions() {
   auto &menu = Menu::get();
   EntryBox* entrybox = &EntryBox::get();
-  Terminal* terminal = &Terminal::get();
   Config* config = &Config::get();
   Directories* directories = &Directories::get();
   
@@ -839,7 +838,6 @@ bool Window::on_key_press_event(GdkEventKey *event) {
 }
 
 bool Window::on_delete_event(GdkEventAny *event) {
-  Terminal* terminal = &Terminal::get();
   Config* config = &Config::get();
   Directories* directories = &Directories::get();
   try {
@@ -1072,7 +1070,6 @@ void Window::goto_line_entry() {
 
 void Window::rename_token_entry() {
   EntryBox* entrybox = &EntryBox::get();
-  Terminal* terminal = &Terminal::get();
   entrybox->clear();
   if(notebook.get_current_page()!=-1) {
     if(notebook.get_current_view()->get_token) {

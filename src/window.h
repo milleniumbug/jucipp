@@ -3,6 +3,7 @@
 
 #include <gtkmm.h>
 #include "notebook.h"
+#include "terminal.h"
 #include <atomic>
 
 class Window : public Gtk::ApplicationWindow {
@@ -28,6 +29,7 @@ private:
   Gtk::ScrolledWindow terminal_scrolled_window;
   Gtk::HBox info_and_status_hbox;
   Gtk::AboutDialog about;
+  Terminal* terminal;
 
   void configure();
   void set_menu_actions();
