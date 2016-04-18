@@ -21,13 +21,14 @@ public:
     void done(const std::string& msg);
     void cancel(const std::string& msg);
   private:
-    InProgress(const std::string& start_msg);
+    InProgress(const std::string& start_msg, Terminal* parent_terminal);
     void start(const std::string& msg);
     size_t line_nr;
     
     std::atomic<bool> stop;
     
     std::thread wait_thread;
+    Terminal* parent_terminal;
   };
   
 private:

@@ -4,7 +4,9 @@
 #include "config.h"
 #include "project.h"
 
-Terminal::InProgress::InProgress(const std::string& start_msg): stop(false) {
+Terminal::InProgress::InProgress(const std::string& start_msg, Terminal* parent_terminal) :
+  stop(false),
+  parent_terminal(parent_terminal) {
   start(start_msg);
 }
 
@@ -15,13 +17,12 @@ Terminal::InProgress::~InProgress() {
 }
 
 void Terminal::InProgress::start(const std::string& msg) {
-  Terminal* terminal = &Terminal::get();
-  line_nr=terminal->print(msg+"...\n");
-  wait_thread=std::thread([this, terminal](){
+  line_nr=parent_terminal->print(msg+"...\n");
+  wait_thread=std::thread([this](){
     size_t c=0;
     while(!stop) {
       if(c%100==0)
-        terminal->async_print(line_nr-1, ".");
+        parent_terminal->async_print(line_nr-1, ".");
       std::this_thread::sleep_for(std::chrono::milliseconds(10));
       c++;
     }
@@ -29,17 +30,15 @@ void Terminal::InProgress::start(const std::string& msg) {
 }
 
 void Terminal::InProgress::done(const std::string& msg) {
-  Terminal* terminal = &Terminal::get();
   bool expected=false;
   if(stop.compare_exchange_strong(expected, true))
-    terminal->async_print(line_nr-1, msg);
+    parent_terminal->async_print(line_nr-1, msg);
 }
 
 void Terminal::InProgress::cancel(const std::string& msg) {
-  Terminal* terminal = &Terminal::get();
   bool expected=false;
   if(stop.compare_exchange_strong(expected, true))
-    terminal->async_print(line_nr-1, msg);
+    parent_terminal->async_print(line_nr-1, msg);
 }
 
 Terminal::Terminal() {
@@ -205,7 +204,7 @@ size_t Terminal::print(const std::string &message, bool bold){
 }
 
 std::shared_ptr<Terminal::InProgress> Terminal::print_in_progress(std::string start_msg) {
-  auto in_progress=std::shared_ptr<Terminal::InProgress>(new Terminal::InProgress(start_msg), [this](Terminal::InProgress *in_progress) {
+  auto in_progress=std::shared_ptr<Terminal::InProgress>(new Terminal::InProgress(start_msg, this), [this](Terminal::InProgress *in_progress) {
     {
       std::unique_lock<std::mutex> lock(in_progresses_mutex);
       in_progresses.erase(in_progress);
@@ -220,9 +219,8 @@ std::shared_ptr<Terminal::InProgress> Terminal::print_in_progress(std::string st
 }
 
 void Terminal::async_print(const std::string &message, bool bold) {
-  Terminal* terminal = &Terminal::get();
-  dispatcher.post([this, message, bold, terminal] {
-    terminal->print(message, bold);
+  dispatcher.post([this, message, bold] {
+    this->print(message, bold);
   });
 }
 
