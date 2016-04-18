@@ -17,11 +17,11 @@ public:
   class InProgress {
     friend class Terminal;
   public:
-    InProgress(const std::string& start_msg);
     ~InProgress();
     void done(const std::string& msg);
     void cancel(const std::string& msg);
   private:
+    InProgress(const std::string& start_msg);
     void start(const std::string& msg);
     size_t line_nr;
     
