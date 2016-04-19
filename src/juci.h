@@ -4,6 +4,7 @@
 #include <gtkmm.h>
 #include <boost/filesystem.hpp>
 #include "config.h"
+#include "window.h"
 
 class Application : public Gtk::Application {
 public:
@@ -16,6 +17,7 @@ private:
   std::vector<boost::filesystem::path> files;
   std::vector<std::string> errors;
   std::shared_ptr<Config> config;
+  std::unique_ptr<Window> window;
 };
 
 #endif // JUCI_JUCI_H_

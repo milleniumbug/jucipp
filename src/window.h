@@ -9,13 +9,9 @@
 
 class Window : public Gtk::ApplicationWindow {
 private:
-  Window();
   Notebook &notebook; //convenience reference
 public:
-  static Window &get() {
-    static Window singleton;
-    return singleton;
-  }
+  Window();
 
 protected:
   bool on_key_press_event(GdkEventKey *event) override;
