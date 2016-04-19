@@ -84,7 +84,7 @@ AspellConfig* Source::View::spellcheck_config=NULL;
 
 Source::View::View(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language): file_path(file_path), language(language) {
   Terminal* terminal = &Terminal::get();
-  config = Config::share();
+  config = Config::get();
   source_config = shared_member(config, &Config::source);
   get_source_buffer()->begin_not_undoable_action();
   if(language) {

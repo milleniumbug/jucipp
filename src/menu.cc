@@ -5,7 +5,7 @@
 
 //TODO: if Ubuntu ever gets fixed, cleanup the Ubuntu specific code
 Menu::Menu() {
-  auto config = Config::share();
+  auto config = Config::get();
   menu_config = shared_member(config, &Config::menu);
   auto accels=menu_config->keys;
   for(auto &accel: accels) {

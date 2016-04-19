@@ -228,7 +228,7 @@ void Project::Clang::compile_and_run() {
 
 Project::Clang::Clang(std::unique_ptr<Build> &&build) :
 Language(std::move(build)) {
-  auto config = Config::share();
+  auto config = Config::get();
   project_config = shared_member(config, &Config::project);
 }
 

@@ -120,7 +120,7 @@ void Application::on_startup() {
 }
 
 Application::Application() : Gtk::Application("no.sout.juci", Gio::APPLICATION_NON_UNIQUE | Gio::APPLICATION_HANDLES_COMMAND_LINE) {
-  config = Config::share();
+  config = Config::get();
   boost::log::add_common_attributes();
   auto log_dir = config->juci_home_path()/"log"/"juci.log";
   boost::log::add_file_log(boost::log::keywords::file_name = log_dir, boost::log::keywords::auto_flush = true);

@@ -26,7 +26,7 @@ Source::ClangViewParse::ClangViewParse(const boost::filesystem::path &file_path,
 Source::View(file_path, language),
 terminal(terminal) {
   JDEBUG("start");
-  auto config = Config::share();
+  auto config = Config::get();
   source_config = shared_member(config, &Config::source);
   terminal_config = shared_member(config, &Config::terminal);
   

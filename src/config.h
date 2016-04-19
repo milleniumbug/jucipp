@@ -92,13 +92,9 @@ public:
 private:
   Config();
 public:
-  static std::shared_ptr<Config> share() {
+  static std::shared_ptr<Config> get() {
     static auto ptr = std::shared_ptr<Config>(new Config());
     return ptr;
-  }
-  
-  static Config &get() {
-    return *share();
   }
   
   void load();

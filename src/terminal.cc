@@ -42,7 +42,7 @@ void Terminal::InProgress::cancel(const std::string& msg) {
 }
 
 Terminal::Terminal() {
-  auto config = Config::share();
+  auto config = Config::get();
   terminal_config = shared_member(config, &Config::terminal);
   source_config = shared_member(config, &Config::source);
   

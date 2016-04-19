@@ -7,7 +7,7 @@
 
 CMake::CMake(const boost::filesystem::path &path) {
   
-  auto config = Config::share();
+  auto config = Config::get();
   project_config = shared_member(config, &Config::project);
   
   const auto find_cmake_project=[this](const boost::filesystem::path &cmake_path) {

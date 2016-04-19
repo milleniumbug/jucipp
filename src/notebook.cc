@@ -57,7 +57,7 @@ Notebook::TabLabel::TabLabel(const boost::filesystem::path &path) : Gtk::Box(Gtk
 Notebook::Notebook() : Gtk::Notebook(), last_index(-1) {
   Gsv::init();
   
-  auto config = Config::share();
+  auto config = Config::get();
   source_config = shared_member(config, &Config::source);
   
   set_scrollable();

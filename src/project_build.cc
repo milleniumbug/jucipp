@@ -77,6 +77,6 @@ boost::filesystem::path Project::CMake::get_executable(const boost::filesystem::
 }
 
 Project::Build::Build() {
-  auto config = Config::share();
+  auto config = Config::get();
   project_config = shared_member(config, &Config::project);
 }

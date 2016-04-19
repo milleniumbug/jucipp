@@ -27,7 +27,7 @@ Window::Window() : notebook(Notebook::get()) {
   Directories* directories = &Directories::get();
   EntryBox* entrybox = &EntryBox::get();
   
-  config = Config::share();
+  config = Config::get();
   window_config = shared_member(config, &Config::window);
   source_config = shared_member(config, &Config::source);
   project_config = shared_member(config, &Config::project);
