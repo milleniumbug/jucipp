@@ -44,7 +44,6 @@ int Application::on_command_line(const Glib::RefPtr<Gio::ApplicationCommandLine>
 void Application::on_activate() {
   Notebook* notebook = &Notebook::get();
   Window* window = &Window::get();
-  Config* config = &Config::get();
   Directories* dirs = &Directories::get();
   Terminal* terminal = &Terminal::get();
   add_window(*window);
@@ -121,7 +120,7 @@ void Application::on_startup() {
 }
 
 Application::Application() : Gtk::Application("no.sout.juci", Gio::APPLICATION_NON_UNIQUE | Gio::APPLICATION_HANDLES_COMMAND_LINE) {
-  Config* config = &Config::get();
+  config = Config::share();
   boost::log::add_common_attributes();
   auto log_dir = config->juci_home_path()/"log"/"juci.log";
   boost::log::add_file_log(boost::log::keywords::file_name = log_dir, boost::log::keywords::auto_flush = true);

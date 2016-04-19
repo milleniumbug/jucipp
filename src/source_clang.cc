@@ -26,10 +26,12 @@ Source::ClangViewParse::ClangViewParse(const boost::filesystem::path &file_path,
 Source::View(file_path, language),
 terminal(terminal) {
   JDEBUG("start");
-  Config* config = &Config::get();
+  auto config = Config::share();
+  source_config = shared_member(config, &Config::source);
+  terminal_config = shared_member(config, &Config::terminal);
   
   auto tag_table=get_buffer()->get_tag_table();
-  for (auto &item : config->source.clang_types) {
+  for (auto &item : source_config->clang_types) {
     if(!tag_table->lookup(item.second)) {
       get_buffer()->create_tag(item.second);
     }
@@ -50,11 +52,10 @@ terminal(terminal) {
 
 void Source::ClangViewParse::configure() {
   Source::View::configure();
-  Config* config = &Config::get();
   
   auto scheme = get_source_buffer()->get_style_scheme();
   auto tag_table=get_buffer()->get_tag_table();
-  for (auto &item : config->source.clang_types) {
+  for (auto &item : source_config->clang_types) {
     auto tag = get_buffer()->get_tag_table()->lookup(item.second);
     if(tag) {
       auto style = scheme->get_style(item.second);
@@ -204,8 +205,8 @@ std::vector<std::string> Source::ClangViewParse::get_compilation_commands() {
     arguments.emplace_back("-I/Library/Developer/CommandLineTools/usr/bin/../include/c++/v1"); //Added for OS X 10.11
 #endif
 #ifdef _WIN32
-    if(!config->terminal.msys2_mingw_path.empty())
-      arguments.emplace_back("-I"+(config->terminal.msys2_mingw_path/"lib/clang"/clang_version/"include").string());
+    if(!terminal_config->msys2_mingw_path.empty())
+      arguments.emplace_back("-I"+(terminal_config->msys2_mingw_path/"lib/clang"/clang_version/"include").string());
 #endif
   }
   arguments.emplace_back("-fretain-comments-from-system-headers");
@@ -216,7 +217,6 @@ std::vector<std::string> Source::ClangViewParse::get_compilation_commands() {
 }
 
 void Source::ClangViewParse::update_syntax() {
-  Config* config = &Config::get();
   std::vector<TokenRange> ranges;
   for (auto &token : *clang_tokens) {
     //if(token.get_kind()==0) // PunctuationToken
@@ -244,8 +244,8 @@ void Source::ClangViewParse::update_syntax() {
     buffer->remove_tag_by_name(tag, buffer->begin(), buffer->end());
   last_syntax_tags.clear();
   for (auto &range : ranges) {
-    auto type_it=config->source.clang_types.find(std::to_string(range.kind));
-    if(type_it!=config->source.clang_types.end()) {
+    auto type_it=source_config->clang_types.find(std::to_string(range.kind));
+    if(type_it!=source_config->clang_types.end()) {
       last_syntax_tags.emplace(type_it->second);
       Gtk::TextIter begin_iter = buffer->get_iter_at_line_index(range.offsets.first.line-1, range.offsets.first.index-1);
       Gtk::TextIter end_iter  = buffer->get_iter_at_line_index(range.offsets.second.line-1, range.offsets.second.index-1);

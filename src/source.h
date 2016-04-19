@@ -11,6 +11,7 @@
 
 #include "selectiondialog.h"
 #include "tooltips.h"
+#include "config.h"
 
 namespace Source {
   Glib::RefPtr<Gsv::Language> guess_language(const boost::filesystem::path &file_path);
@@ -156,6 +157,9 @@ namespace Source {
     std::unique_ptr<SelectionDialog> spellcheck_suggestions_dialog;
     guint previous_non_modifier_keyval=0;
     guint last_keyval=0;
+    
+    std::shared_ptr<Config> config;
+    std::shared_ptr<Config::Source> source_config;
   private:
     GtkSourceSearchContext *search_context;
     GtkSourceSearchSettings *search_settings;

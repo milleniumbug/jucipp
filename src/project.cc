@@ -169,24 +169,22 @@ std::pair<std::string, std::string> Project::Clang::get_run_arguments() {
 }
 
 void Project::Clang::compile() {
-  Config* config = &Config::get();
   Terminal* terminal = &Terminal::get();
   auto default_build_path=build->get_default_build_path();
   if(default_build_path.empty() || !build->update_default_build())
     return;
   
-  if(config->project.clear_terminal_on_compile)
+  if(project_config->clear_terminal_on_compile)
     terminal->clear();
   
   compiling=true;
   terminal->print("Compiling project "+build->project_path.string()+"\n");
-  terminal->async_process(config->project.make_command, default_build_path, [this](int exit_status) {
+  terminal->async_process(project_config->make_command, default_build_path, [this](int exit_status) {
     compiling=false;
   });
 }
 
 void Project::Clang::compile_and_run() {
-  Config* config = &Config::get();
   Notebook* notebook = &Notebook::get();
   Terminal* terminal = &Terminal::get();
   auto default_build_path=build->get_default_build_path();
@@ -213,12 +211,12 @@ void Project::Clang::compile_and_run() {
     arguments=filesystem::escape_argument(arguments);
   }
   
-  if(config->project.clear_terminal_on_compile)
+  if(project_config->clear_terminal_on_compile)
     terminal->clear();
   
   compiling=true;
   terminal->print("Compiling and running "+arguments+"\n");
-  terminal->async_process(config->project.make_command, default_build_path, [this, arguments, project_path, terminal](int exit_status){
+  terminal->async_process(project_config->make_command, default_build_path, [this, arguments, project_path, terminal](int exit_status){
     compiling=false;
     if(exit_status==EXIT_SUCCESS) {
       terminal->async_process(arguments, project_path, [this, arguments, terminal](int exit_status){
@@ -226,6 +224,12 @@ void Project::Clang::compile_and_run() {
       });
     }
   });
+}
+
+Project::Clang::Clang(std::unique_ptr<Build> &&build) :
+Language(std::move(build)) {
+  auto config = Config::share();
+  project_config = shared_member(config, &Config::project);
 }
 
 #ifdef JUCI_ENABLE_DEBUG
@@ -261,7 +265,6 @@ std::pair<std::string, std::string> Project::Clang::debug_get_run_arguments() {
 }
 
 void Project::Clang::debug_start() {
-  Config* config = &Config::get();
   Notebook* notebook = &Notebook::get();
   Terminal* terminal = &Terminal::get();
   Debug::Clang* clang = &Debug::Clang::get();
@@ -300,12 +303,12 @@ void Project::Clang::debug_start() {
     }
   }
   
-  if(config->project.clear_terminal_on_compile)
+  if(project_config->clear_terminal_on_compile)
     terminal->clear();
   
   debugging=true;
   terminal->print("Compiling and debugging "+run_arguments+"\n");
-  terminal->async_process(config->project.make_command, debug_build_path, [this, breakpoints, run_arguments, project_path, clang, terminal](int exit_status){
+  terminal->async_process(project_config->make_command, debug_build_path, [this, breakpoints, run_arguments, project_path, clang, terminal](int exit_status){
     if(exit_status!=EXIT_SUCCESS)
       debugging=false;
     else {

@@ -10,6 +10,7 @@
 #include "dispatcher.h"
 #include <iostream>
 #include "project_build.h"
+#include "config.h"
 
 namespace Project {
   Gtk::Label &debug_status_label();
@@ -58,8 +59,9 @@ namespace Project {
   class Clang : public Language {
   private:
     Dispatcher dispatcher;
+    std::shared_ptr<Config::Project> project_config;
   public:
-    Clang(std::unique_ptr<Build> &&build) : Language(std::move(build)) {}
+    Clang(std::unique_ptr<Build> &&build);
     ~Clang() { dispatcher.disconnect(); }
     
     std::pair<std::string, std::string> get_run_arguments() override;

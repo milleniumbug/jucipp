@@ -9,6 +9,7 @@
 #include "source.h"
 #include "terminal.h"
 #include "dispatcher.h"
+#include "config.h"
 
 namespace Source {
   class ClangViewParse : public View {
@@ -52,6 +53,8 @@ namespace Source {
     Terminal* terminal;
   private:
     Glib::ustring parse_thread_buffer;
+    std::shared_ptr<Config::Terminal> terminal_config;
+    std::shared_ptr<Config::Source> source_config;
     
     void update_syntax();
     std::set<std::string> last_syntax_tags;

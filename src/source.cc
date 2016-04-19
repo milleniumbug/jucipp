@@ -84,7 +84,8 @@ AspellConfig* Source::View::spellcheck_config=NULL;
 
 Source::View::View(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language): file_path(file_path), language(language) {
   Terminal* terminal = &Terminal::get();
-  Config* config = &Config::get();
+  config = Config::share();
+  source_config = shared_member(config, &Config::source);
   get_source_buffer()->begin_not_undoable_action();
   if(language) {
     if(filesystem::read_non_utf8(file_path, get_buffer())==-1)
@@ -275,9 +276,9 @@ Source::View::View(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::L
   set_tooltip_and_dialog_events();
   
   set_tab_width(4); //Visual size of a \t hardcoded to be equal to visual size of 4 spaces
-  tab_char=config->source.default_tab_char;
-  tab_size=config->source.default_tab_size;
-  if(config->source.auto_tab_char_and_size) {
+  tab_char=source_config->default_tab_char;
+  tab_size=source_config->default_tab_size;
+  if(source_config->auto_tab_char_and_size) {
     auto tab_char_and_size=find_tab_char_and_size();
     if(tab_char_and_size.first!=0) {
       if(tab_char!=tab_char_and_size.first || tab_size!=tab_char_and_size.second) {
@@ -304,7 +305,7 @@ Source::View::View(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::L
                   language->get_id()=="c-sharp")) {
     is_bracket_language=true;
     
-    auto_indent=[this, terminal, config]() {
+    auto_indent=[this, terminal]() {
       auto command=config->terminal.clang_format_command;
       bool use_style_file=false;
       
@@ -335,8 +336,8 @@ Source::View::View(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::L
         command+=" -style=\"{IndentWidth: "+std::to_string(indent_width);
         command+=", "+tab_style;
         command+=", "+std::string("AccessModifierOffset: -")+std::to_string(indent_width);
-        if(config->source.clang_format_style!="")
-          command+=", "+config->source.clang_format_style;
+        if(source_config->clang_format_style!="")
+          command+=", "+source_config->clang_format_style;
         command+="}\"";
       }
       
@@ -379,28 +380,27 @@ void Source::View::set_tab_char_and_size(char tab_char, unsigned tab_size) {
 
 void Source::View::configure() {
   //TODO: Move this to notebook? Might take up too much memory doing this for every tab.
-  Config* config = &Config::get();
   Terminal* terminal = &Terminal::get();
   auto style_scheme_manager=Gsv::StyleSchemeManager::get_default();
   style_scheme_manager->prepend_search_path((config->juci_home_path()/"styles").string());
   
-  if(config->source.style.size()>0) {
-    auto scheme = style_scheme_manager->get_scheme(config->source.style);
+  if(source_config->style.size()>0) {
+    auto scheme = style_scheme_manager->get_scheme(source_config->style);
   
     if(scheme)
       get_source_buffer()->set_style_scheme(scheme);
     else
-      terminal->print("Error: Could not find gtksourceview style: "+config->source.style+'\n', true);
+      terminal->print("Error: Could not find gtksourceview style: "+source_config->style+'\n', true);
   }
   
-  if(config->source.wrap_lines)
+  if(source_config->wrap_lines)
     set_wrap_mode(Gtk::WrapMode::WRAP_CHAR);
   else
     set_wrap_mode(Gtk::WrapMode::WRAP_NONE);
-  property_highlight_current_line() = config->source.highlight_current_line;
-  property_show_line_numbers() = config->source.show_line_numbers;
-  if(config->source.font.size()>0)
-    override_font(Pango::FontDescription(config->source.font));
+  property_highlight_current_line() = source_config->highlight_current_line;
+  property_show_line_numbers() = source_config->show_line_numbers;
+  if(source_config->font.size()>0)
+    override_font(Pango::FontDescription(source_config->font));
 #if GTKSOURCEVIEWMM_MAJOR_VERSION > 2 & GTKSOURCEVIEWMM_MINOR_VERSION > 15
   gtk_source_view_set_background_pattern(this->gobj(), GTK_SOURCE_BACKGROUND_PATTERN_TYPE_GRID);
 #endif
@@ -457,8 +457,8 @@ void Source::View::configure() {
     note_tag->property_foreground()=style->property_foreground();
   }
     
-  if(config->source.spellcheck_language.size()>0) {
-    aspell_config_replace(spellcheck_config, "lang", config->source.spellcheck_language.c_str());
+  if(source_config->spellcheck_language.size()>0) {
+    aspell_config_replace(spellcheck_config, "lang", source_config->spellcheck_language.c_str());
     aspell_config_replace(spellcheck_config, "encoding", "utf-8");
   }
   spellcheck_possible_err=new_aspell_speller(spellcheck_config);
