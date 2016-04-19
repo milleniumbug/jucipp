@@ -73,7 +73,7 @@ Window::Window() : notebook(Notebook::get()) {
   };
 
   //Scroll to end of terminal whenever info is printed
-  terminal->signal_size_allocate().connect([this, terminal](Gtk::Allocation& allocation){
+  terminal->signal_size_allocate().connect([this](Gtk::Allocation& allocation){
     auto adjustment=terminal_scrolled_window.get_vadjustment();
     adjustment->set_value(adjustment->get_upper()-adjustment->get_page_size());
     terminal->queue_draw();
@@ -95,7 +95,7 @@ Window::Window() : notebook(Notebook::get()) {
     }
   });
 
-  notebook.signal_switch_page().connect([this, entrybox, directories, terminal](Gtk::Widget* page, guint page_num) {
+  notebook.signal_switch_page().connect([this, entrybox, directories](Gtk::Widget* page, guint page_num) {
     if(notebook.get_current_page()!=-1) {
       auto view=notebook.get_current_view();
       if(search_entry_shown && entrybox->labels.size()>0) {
@@ -175,7 +175,7 @@ void Window::set_menu_actions() {
     close();
   });
   
-  menu.add_action("new_file", [this, terminal, directories]() {
+  menu.add_action("new_file", [this, directories]() {
     boost::filesystem::path path = Dialog::new_file(notebook.get_current_folder());
     if(path!="") {
       if(boost::filesystem::exists(path)) {
@@ -193,7 +193,7 @@ void Window::set_menu_actions() {
       }
     }
   });
-  menu.add_action("new_folder", [this, entrybox, terminal, directories]() {
+  menu.add_action("new_folder", [this, entrybox, directories]() {
     auto time_now=std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
     boost::filesystem::path path = Dialog::new_folder(notebook.get_current_folder());
     if(path!="" && boost::filesystem::exists(path)) {
@@ -209,7 +209,7 @@ void Window::set_menu_actions() {
       directories->select(path);
     }
   });
-  menu.add_action("new_project_cpp", [this, entrybox, terminal, directories]() {
+  menu.add_action("new_project_cpp", [this, entrybox, directories]() {
     boost::filesystem::path project_path = Dialog::new_folder(notebook.get_current_folder());
     if(project_path!="") {
       auto project_name=project_path.filename().string();
@@ -267,7 +267,7 @@ void Window::set_menu_actions() {
       }
     }
   });
-  menu.add_action("save_as", [this, terminal, directories]() {
+  menu.add_action("save_as", [this, directories]() {
     if(notebook.get_current_page()!=-1) {
       auto path = Dialog::save_file_as(notebook.get_current_view()->file_path);
       if(path!="") {
@@ -307,7 +307,7 @@ void Window::set_menu_actions() {
     }
   });
   
-  menu.add_action("edit_undo", [this, terminal]() {
+  menu.add_action("edit_undo", [this]() {
     if(notebook.get_current_page()!=-1) {
       auto undo_manager = notebook.get_current_view()->get_source_buffer()->get_undo_manager();
       if (undo_manager->can_undo()) {
@@ -384,7 +384,7 @@ void Window::set_menu_actions() {
     }
   });
   
-  menu.add_action("source_find_documentation", [this, terminal, config]() {
+  menu.add_action("source_find_documentation", [this, config]() {
     if(notebook.get_current_page()!=-1) {
       if(notebook.get_current_view()->get_token_data) {
         auto data=notebook.get_current_view()->get_token_data();        
@@ -581,7 +581,7 @@ void Window::set_menu_actions() {
     Project::current_language->compile();
   });
   
-  menu.add_action("run_command", [this, entrybox, terminal]() {
+  menu.add_action("run_command", [this, entrybox]() {
     entrybox->clear();
     entrybox->labels.emplace_back();
     auto label_it=entrybox->labels.begin();
@@ -589,13 +589,13 @@ void Window::set_menu_actions() {
       label_it->set_text("Run Command directory order: opened directory, file path, current directory");
     };
     label_it->update(0, "");
-    entrybox->entries.emplace_back(last_run_command, [this, entrybox, terminal](const std::string& content){
+    entrybox->entries.emplace_back(last_run_command, [this, entrybox](const std::string& content){
       if(content!="") {
         last_run_command=content;
         auto run_path=notebook.get_current_folder();
         terminal->async_print("Running: "+content+'\n');
   
-        terminal->async_process(content, run_path, [this, content, terminal](int exit_status){
+        terminal->async_process(content, run_path, [this, content](int exit_status){
           terminal->async_print(content+" returned: "+std::to_string(exit_status)+'\n');
         });
       }
@@ -609,10 +609,10 @@ void Window::set_menu_actions() {
     entrybox->show();
   });
   
-  menu.add_action("kill_last_running", [this, terminal]() {
+  menu.add_action("kill_last_running", [this]() {
     terminal->kill_last_async_process();
   });
-  menu.add_action("force_kill_last_running", [this, terminal]() {
+  menu.add_action("force_kill_last_running", [this]() {
     terminal->kill_last_async_process(true);
   });
   
@@ -1081,7 +1081,7 @@ void Window::rename_token_entry() {
           label_it->set_text("Warning: only opened and parsed tabs will have its content renamed, and modified files will be saved");
         };
         label_it->update(0, "");
-        entrybox->entries.emplace_back(token->spelling, [this, token, terminal, entrybox](const std::string& content){
+        entrybox->entries.emplace_back(token->spelling, [this, token, entrybox](const std::string& content){
           if(notebook.get_current_page()!=-1 && content!=token->spelling) {
             std::vector<int> modified_pages;
             for(int c=0;c<notebook.size();c++) {

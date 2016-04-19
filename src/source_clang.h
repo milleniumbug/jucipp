@@ -24,7 +24,7 @@ namespace Source {
       int kind;
     };
     
-    ClangViewParse(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language);
+    ClangViewParse(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language, Terminal* terminal);
     
     void configure() override;
     
@@ -48,6 +48,8 @@ namespace Source {
     std::mutex parse_mutex;
     std::atomic<ParseState> parse_state;
     std::atomic<ParseProcessState> parse_process_state;
+    
+    Terminal* terminal;
   private:
     Glib::ustring parse_thread_buffer;
     
@@ -71,7 +73,7 @@ namespace Source {
       std::string brief_comments;
     };
     
-    ClangViewAutocomplete(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language);
+    ClangViewAutocomplete(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language, Terminal* terminal);
     
     virtual void async_delete();
     bool full_reparse() override;
@@ -96,7 +98,7 @@ namespace Source {
 
   class ClangViewRefactor : public ClangViewAutocomplete {
   public:
-    ClangViewRefactor(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language);
+    ClangViewRefactor(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language, Terminal* terminal);
   protected:
     sigc::connection delayed_tag_similar_tokens_connection;
   private:
@@ -109,7 +111,7 @@ namespace Source {
   
   class ClangView : public ClangViewRefactor {
   public:
-    ClangView(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language);
+    ClangView(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language, Terminal* terminal);
     void async_delete() override;
   };
 }

@@ -101,7 +101,7 @@ void Notebook::open(const boost::filesystem::path &file_path) {
   
   auto language=Source::guess_language(file_path);
   if(language && (language->get_id()=="chdr" || language->get_id()=="cpphdr" || language->get_id()=="c" || language->get_id()=="cpp" || language->get_id()=="objc"))
-    source_views.emplace_back(new Source::ClangView(file_path, language));
+    source_views.emplace_back(new Source::ClangView(file_path, language, terminal));
   else
     source_views.emplace_back(new Source::GenericView(file_path, language));
   

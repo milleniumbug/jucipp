@@ -22,10 +22,10 @@ namespace sigc {
 
 clang::Index Source::ClangViewParse::clang_index(0, 0);
 
-Source::ClangViewParse::ClangViewParse(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language):
-Source::View(file_path, language) {
+Source::ClangViewParse::ClangViewParse(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language, Terminal* terminal):
+Source::View(file_path, language),
+terminal(terminal) {
   JDEBUG("start");
-  Terminal* terminal = &Terminal::get();
   Config* config = &Config::get();
   
   auto tag_table=get_buffer()->get_tag_table();
@@ -76,7 +76,6 @@ void Source::ClangViewParse::configure() {
 }
 
 void Source::ClangViewParse::parse_initialize() {
-  Terminal* terminal = &Terminal::get();
   type_tooltips.hide();
   diagnostic_tooltips.hide();
   parsed=false;
@@ -103,7 +102,7 @@ void Source::ClangViewParse::parse_initialize() {
   update_syntax();
   
   set_status("parsing...");
-  parse_thread=std::thread([this, terminal]() {
+  parse_thread=std::thread([this]() {
     while(true) {
       while(parse_state==ParseState::PROCESSING && parse_process_state!=ParseProcessState::STARTING && parse_process_state!=ParseProcessState::PROCESSING)
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
@@ -152,7 +151,7 @@ void Source::ClangViewParse::parse_initialize() {
         else {
           parse_state=ParseState::STOP;
           parse_lock.unlock();
-          dispatcher.post([this, terminal] {
+          dispatcher.post([this] {
             terminal->print("Error: failed to reparse "+this->file_path.string()+".\n", true);
             set_status("");
             set_info("");
@@ -480,8 +479,8 @@ void Source::ClangViewParse::show_type_tooltips(const Gdk::Rectangle &rectangle)
 //////////////////////////////
 //// ClangViewAutocomplete ///
 //////////////////////////////
-Source::ClangViewAutocomplete::ClangViewAutocomplete(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language):
-Source::ClangViewParse(file_path, language), autocomplete_state(AutocompleteState::IDLE) {
+Source::ClangViewAutocomplete::ClangViewAutocomplete(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language, Terminal* terminal):
+Source::ClangViewParse(file_path, language, terminal), autocomplete_state(AutocompleteState::IDLE) {
   get_buffer()->signal_changed().connect([this](){
     if(autocomplete_dialog && autocomplete_dialog->shown)
       delayed_reparse_connection.disconnect();
@@ -652,7 +651,6 @@ void Source::ClangViewAutocomplete::autocomplete_check() {
 }
 
 void Source::ClangViewAutocomplete::autocomplete() {
-  Terminal* terminal = &Terminal::get();
   if(parse_state!=ParseState::PROCESSING)
     return;
   
@@ -678,7 +676,7 @@ void Source::ClangViewAutocomplete::autocomplete() {
     column_nr--;
     pos--;
   }
-  autocomplete_thread=std::thread([this, line_nr, column_nr, buffer, terminal](){
+  autocomplete_thread=std::thread([this, line_nr, column_nr, buffer](){
     std::unique_lock<std::mutex> lock(parse_mutex);
     if(parse_state==ParseState::PROCESSING) {
       parse_process_state=ParseProcessState::IDLE;
@@ -731,7 +729,7 @@ void Source::ClangViewAutocomplete::autocomplete() {
         });
       }
       else {
-        dispatcher.post([this, terminal] {
+        dispatcher.post([this] {
           terminal->print("Error: autocomplete failed, reparsing "+this->file_path.string()+"\n", true);
           autocomplete_state=AutocompleteState::CANCELED;
           full_reparse();
@@ -824,8 +822,8 @@ bool Source::ClangViewAutocomplete::full_reparse() {
 ////////////////////////////
 //// ClangViewRefactor /////
 ////////////////////////////
-Source::ClangViewRefactor::ClangViewRefactor(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language):
-Source::ClangViewAutocomplete(file_path, language) {
+Source::ClangViewRefactor::ClangViewRefactor(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language, Terminal* terminal):
+Source::ClangViewAutocomplete(file_path, language, terminal) {
   similar_tokens_tag=get_buffer()->create_tag();
   similar_tokens_tag->property_weight()=1000; //TODO: replace with Pango::WEIGHT_ULTRAHEAVY in 2016 or so (when Ubuntu 14 is history)
   
@@ -1195,7 +1193,7 @@ void Source::ClangViewRefactor::tag_similar_tokens(const Token &token) {
   }
 }
 
-Source::ClangView::ClangView(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language): ClangViewRefactor(file_path, language) {
+Source::ClangView::ClangView(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language, Terminal* terminal): ClangViewRefactor(file_path, language, terminal) {
   if(language) {
     get_source_buffer()->set_highlight_syntax(true);
     get_source_buffer()->set_language(language);
