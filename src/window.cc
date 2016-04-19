@@ -176,7 +176,7 @@ void Window::set_menu_actions() {
   });
   
   menu.add_action("new_file", [this, directories]() {
-    boost::filesystem::path path = Dialog::new_file(notebook.get_current_folder());
+    boost::filesystem::path path = Dialog::new_file(notebook.get_current_folder(*directories));
     if(path!="") {
       if(boost::filesystem::exists(path)) {
         terminal->print("Error: "+path.string()+" already exists.\n", true);
@@ -195,7 +195,7 @@ void Window::set_menu_actions() {
   });
   menu.add_action("new_folder", [this, entrybox, directories]() {
     auto time_now=std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
-    boost::filesystem::path path = Dialog::new_folder(notebook.get_current_folder());
+    boost::filesystem::path path = Dialog::new_folder(notebook.get_current_folder(*directories));
     if(path!="" && boost::filesystem::exists(path)) {
       boost::system::error_code ec;
       auto last_write_time=boost::filesystem::last_write_time(path, ec);
@@ -210,7 +210,7 @@ void Window::set_menu_actions() {
     }
   });
   menu.add_action("new_project_cpp", [this, entrybox, directories]() {
-    boost::filesystem::path project_path = Dialog::new_folder(notebook.get_current_folder());
+    boost::filesystem::path project_path = Dialog::new_folder(notebook.get_current_folder(*directories));
     if(project_path!="") {
       auto project_name=project_path.filename().string();
       for(size_t c=0;c<project_name.size();c++) {
@@ -241,13 +241,13 @@ void Window::set_menu_actions() {
     }
   });
   
-  menu.add_action("open_file", [this]() {
-    auto path=Dialog::open_file(notebook.get_current_folder());
+  menu.add_action("open_file", [this, directories]() {
+    auto path=Dialog::open_file(notebook.get_current_folder(*directories));
     if(path!="")
       notebook.open(path);
   });
   menu.add_action("open_folder", [this, directories]() {
-    auto path = Dialog::open_folder(notebook.get_current_folder());
+    auto path = Dialog::open_folder(notebook.get_current_folder(*directories));
     if (path!="" && boost::filesystem::exists(path))
       directories->open(path);
   });
@@ -581,7 +581,7 @@ void Window::set_menu_actions() {
     Project::current_language->compile();
   });
   
-  menu.add_action("run_command", [this, entrybox]() {
+  menu.add_action("run_command", [this, entrybox, directories]() {
     entrybox->clear();
     entrybox->labels.emplace_back();
     auto label_it=entrybox->labels.begin();
@@ -589,10 +589,10 @@ void Window::set_menu_actions() {
       label_it->set_text("Run Command directory order: opened directory, file path, current directory");
     };
     label_it->update(0, "");
-    entrybox->entries.emplace_back(last_run_command, [this, entrybox](const std::string& content){
+    entrybox->entries.emplace_back(last_run_command, [this, entrybox, directories](const std::string& content){
       if(content!="") {
         last_run_command=content;
-        auto run_path=notebook.get_current_folder();
+        auto run_path=notebook.get_current_folder(*directories);
         terminal->async_print("Running: "+content+'\n');
   
         terminal->async_process(content, run_path, [this, content](int exit_status){

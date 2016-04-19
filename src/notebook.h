@@ -25,6 +25,7 @@ struct SaveFileError : std::runtime_error
   explicit SaveFileError(const std::string& message, boost::filesystem::path requested_path);
 };
 
+class Directories;
 
 class Notebook : public Gtk::Notebook {
   class TabLabel : public Gtk::Box {
@@ -52,7 +53,7 @@ public:
   bool save(int page);
   bool save_current();
   void configure(int view_nr);
-  boost::filesystem::path get_current_folder();
+  boost::filesystem::path get_current_folder(Directories& directories);
 
   Gtk::Label info;
   Gtk::Label status;

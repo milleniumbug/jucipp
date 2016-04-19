@@ -329,10 +329,9 @@ bool Notebook::close_current_page() {
   return close(get_current_page());
 }
 
-boost::filesystem::path Notebook::get_current_folder() {
-  Directories* directories = &Directories::get();
-  if(!directories->path.empty())
-    return directories->path;
+boost::filesystem::path Notebook::get_current_folder(Directories& directories) {
+  if(!directories.path.empty())
+    return directories.path;
   else if(get_current_page()!=-1)
     return get_current_view()->file_path.parent_path();
   else
