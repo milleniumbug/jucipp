@@ -25,6 +25,20 @@ namespace sigc {
 #endif
 }
 
+OpenFileError::OpenFileError(const std::string& message, boost::filesystem::path requested_path) :
+  std::runtime_error(message),
+  requested_path(requested_path)
+{
+  
+}
+
+SaveFileError::SaveFileError(const std::string& message, boost::filesystem::path requested_path) :
+  std::runtime_error(message),
+  requested_path(requested_path)
+{
+  
+}
+
 Notebook::TabLabel::TabLabel(const boost::filesystem::path &path) : Gtk::Box(Gtk::ORIENTATION_HORIZONTAL) {
   set_can_focus(false);
   set_tooltip_text(path.string());

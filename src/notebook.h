@@ -7,7 +7,24 @@
 #include "source_clang.h"
 #include <type_traits>
 #include <map>
+#include <stdexcept>
 #include <sigc++/sigc++.h>
+#include <boost/filesystem.hpp>
+
+struct OpenFileError : std::runtime_error
+{
+  boost::filesystem::path requested_path;
+  
+  explicit OpenFileError(const std::string& message, boost::filesystem::path requested_path);
+};
+
+struct SaveFileError : std::runtime_error
+{
+  boost::filesystem::path requested_path;
+  
+  explicit SaveFileError(const std::string& message, boost::filesystem::path requested_path);
+};
+
 
 class Notebook : public Gtk::Notebook {
   class TabLabel : public Gtk::Box {
