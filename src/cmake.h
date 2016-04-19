@@ -4,6 +4,7 @@
 #include <vector>
 #include <unordered_map>
 #include <unordered_set>
+#include "config.h"
 
 class CMake {
 public:
@@ -29,5 +30,6 @@ private:
   void parse();
   std::vector<std::string> get_function_parameters(std::string &data);
   bool parsed=false;
+  std::shared_ptr<Config::Project> project_config;
 };
 #endif //JUCI_CMAKE_H_

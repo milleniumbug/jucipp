@@ -57,6 +57,9 @@ Notebook::TabLabel::TabLabel(const boost::filesystem::path &path) : Gtk::Box(Gtk
 Notebook::Notebook() : Gtk::Notebook(), last_index(-1) {
   Gsv::init();
   
+  auto config = Config::share();
+  source_config = shared_member(config, &Config::source);
+  
   set_scrollable();
   
   auto provider = Gtk::CssProvider::create();
@@ -202,11 +205,10 @@ void Notebook::open(const boost::filesystem::path &file_path) {
 
 void Notebook::configure(int view_nr) {
 #if GTKSOURCEVIEWMM_MAJOR_VERSION > 2 & GTKSOURCEVIEWMM_MINOR_VERSION > 17
-  Config* config = &Config::get();
-  auto source_font_description=Pango::FontDescription(config->source.font);
-  auto source_map_font_desc=Pango::FontDescription(static_cast<std::string>(source_font_description.get_family())+" "+config->source.map_font_size); 
+  auto source_font_description=Pango::FontDescription(source_config->font);
+  auto source_map_font_desc=Pango::FontDescription(static_cast<std::string>(source_font_description.get_family())+" "+source_config->map_font_size); 
   source_maps.at(view_nr)->override_font(source_map_font_desc);
-  if(config->source.show_map) {
+  if(source_config->show_map) {
     if(hboxes.at(view_nr)->get_children().size()==1)
       hboxes.at(view_nr)->pack_end(*source_maps.at(view_nr), Gtk::PACK_SHRINK);
   }
@@ -217,7 +219,6 @@ void Notebook::configure(int view_nr) {
 
 bool Notebook::save(int page) {
   Terminal* terminal = &Terminal::get();
-  Config* config = &Config::get();
   JDEBUG("start");
   if(page>=size()) {
     JDEBUG("end false");
@@ -226,7 +227,7 @@ bool Notebook::save(int page) {
   auto view=get_view(page);
   if (view->file_path != "" && view->get_buffer()->get_modified()) {
     //Remove trailing whitespace characters on save, and add trailing newline if missing
-    if(config->source.cleanup_whitespace_characters) {
+    if(source_config->cleanup_whitespace_characters) {
       auto buffer=view->get_buffer();
       buffer->begin_user_action();
       for(int line=0;line<buffer->get_line_count();line++) {

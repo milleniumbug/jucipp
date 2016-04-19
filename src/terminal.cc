@@ -42,6 +42,10 @@ void Terminal::InProgress::cancel(const std::string& msg) {
 }
 
 Terminal::Terminal() {
+  auto config = Config::share();
+  terminal_config = shared_member(config, &Config::terminal);
+  source_config = shared_member(config, &Config::source);
+  
   bold_tag=get_buffer()->create_tag();
   bold_tag->property_weight()=PANGO_WEIGHT_BOLD;
 }
@@ -152,7 +156,6 @@ void Terminal::kill_async_processes(bool force) {
 }
 
 size_t Terminal::print(const std::string &message, bool bold){
-  Config* config = &Config::get();
 #ifdef _WIN32
   //Remove color codes
   auto message_no_color=message; //copy here since operations on Glib::ustring is too slow
@@ -194,8 +197,8 @@ size_t Terminal::print(const std::string &message, bool bold){
   else
     get_buffer()->insert(get_buffer()->end(), umessage);
   
-  if(get_buffer()->get_line_count()>config->terminal.history_size) {
-    int lines=get_buffer()->get_line_count()-config->terminal.history_size;
+  if(get_buffer()->get_line_count() > terminal_config->history_size) {
+    int lines=get_buffer()->get_line_count() - terminal_config->history_size;
     get_buffer()->erase(get_buffer()->begin(), get_buffer()->get_iter_at_line(lines));
     deleted_lines+=static_cast<size_t>(lines);
   }
@@ -244,12 +247,11 @@ void Terminal::async_print(size_t line_nr, const std::string &message) {
 }
 
 void Terminal::configure() {
-  Config* config = &Config::get();
-  if(config->terminal.font.size()>0) {
-    override_font(Pango::FontDescription(config->terminal.font));
+  if(terminal_config->font.size()>0) {
+    override_font(Pango::FontDescription(terminal_config->font));
   }
-  else if(config->source.font.size()>0) {
-    Pango::FontDescription font_description(config->source.font);
+  else if(source_config->font.size()>0) {
+    Pango::FontDescription font_description(source_config->font);
     auto font_description_size=font_description.get_size();
     if(font_description_size==0) {
       Pango::FontDescription default_font_description(Gtk::Settings::get_default()->property_gtk_font_name());

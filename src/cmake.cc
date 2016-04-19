@@ -6,6 +6,10 @@
 #include <boost/regex.hpp>
 
 CMake::CMake(const boost::filesystem::path &path) {
+  
+  auto config = Config::share();
+  project_config = shared_member(config, &Config::project);
+  
   const auto find_cmake_project=[this](const boost::filesystem::path &cmake_path) {
     for(auto &line: filesystem::read_lines(cmake_path)) {
       const boost::regex project_regex("^ *project *\\(.*$", boost::regex::icase);
@@ -34,7 +38,6 @@ CMake::CMake(const boost::filesystem::path &path) {
 
 bool CMake::update_default_build(const boost::filesystem::path &default_build_path, bool force) {
   Terminal* terminal = &Terminal::get();
-  Config* config = &Config::get();
   if(project_path.empty())
     return false;
   
@@ -57,7 +60,7 @@ bool CMake::update_default_build(const boost::filesystem::path &default_build_pa
   
   auto compile_commands_path=default_build_path/"compile_commands.json";
   Dialog::Message message("Creating/updating default build");
-  auto exit_status=terminal->process(config->project.cmake_command+" "+
+  auto exit_status=terminal->process(project_config->cmake_command+" "+
                                            filesystem::escape_argument(project_path)+" -DCMAKE_EXPORT_COMPILE_COMMANDS=ON", default_build_path);
   message.hide();
   if(exit_status==EXIT_SUCCESS) {
@@ -81,7 +84,6 @@ bool CMake::update_default_build(const boost::filesystem::path &default_build_pa
 }
 
 bool CMake::update_debug_build(const boost::filesystem::path &debug_build_path, bool force) {
-  Config* config = &Config::get();
   Terminal* terminal = &Terminal::get();
   if(project_path.empty())
     return false;
@@ -105,7 +107,7 @@ bool CMake::update_debug_build(const boost::filesystem::path &debug_build_path, 
   
   std::unique_ptr<Dialog::Message> message;
   message=std::unique_ptr<Dialog::Message>(new Dialog::Message("Creating/updating debug build"));
-  auto exit_status=terminal->process(config->project.cmake_command+" "+
+  auto exit_status=terminal->process(project_config->cmake_command+" "+
                                            filesystem::escape_argument(project_path)+" -DCMAKE_BUILD_TYPE=Debug", debug_build_path);
   if(message)
     message->hide();

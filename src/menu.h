@@ -4,6 +4,7 @@
 #include <string>
 #include <unordered_map>
 #include <gtkmm.h>
+#include "config.h"
 
 class Menu {
 private:
@@ -26,5 +27,6 @@ public:
 private:
   Glib::RefPtr<Gtk::Builder> builder;
   std::string ui_xml;
+  std::shared_ptr<Config::Menu> menu_config;
 };
 #endif  // JUCI_MENU_H_

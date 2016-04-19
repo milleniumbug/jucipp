@@ -5,8 +5,9 @@
 
 //TODO: if Ubuntu ever gets fixed, cleanup the Ubuntu specific code
 Menu::Menu() {
-  Config* config = &Config::get();
-  auto accels=config->menu.keys;
+  auto config = Config::share();
+  menu_config = shared_member(config, &Config::menu);
+  auto accels=menu_config->keys;
   for(auto &accel: accels) {
 #ifdef JUCI_UBUNTU
     size_t pos=0;
@@ -392,12 +393,11 @@ void Menu::add_action(const std::string &name, std::function<void()> action) {
 }
 
 void Menu::set_keys() {
-  Config* config = &Config::get();
   auto g_application=g_application_get_default();
   auto gio_application=Glib::wrap(g_application, true);
   auto application=Glib::RefPtr<Gtk::Application>::cast_static(gio_application);
            
-  for(auto &key: config->menu.keys) {
+  for(auto &key: menu_config->keys) {
     if(key.second.size()>0 && actions.find(key.first)!=actions.end()) {
 #if GTK_VERSION_GE(3, 12)
       application->set_accel_for_action("app."+key.first, key.second); 

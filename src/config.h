@@ -6,6 +6,24 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include <memory>
+
+// shared_member
+//
+// Returns a shared_ptr that shares ownership with a passed pointer, but
+// points to a member object of the pointed object. If the passed shared_ptr is
+// empty, returns nullptr. If the passed pointer to member object is null,
+// the behaviour is undefined.
+template<typename T, typename Member>
+std::shared_ptr<Member> shared_member(std::shared_ptr<T> ptr, Member T::*member)
+{
+  // using std::shared_ptr's aliasing constructor
+  // see https://www.justsoftwaresolutions.co.uk/cplusplus/shared-ptr-secret-constructor.html
+  if(ptr)
+    return std::shared_ptr<Member>(ptr, &(ptr.get()->*member));
+  else
+    return nullptr;
+}
 
 class Config {
 public:
@@ -74,9 +92,13 @@ public:
 private:
   Config();
 public:
+  static std::shared_ptr<Config> share() {
+    static auto ptr = std::shared_ptr<Config>(new Config());
+    return ptr;
+  }
+  
   static Config &get() {
-    static Config singleton;
-    return singleton;
+    return *share();
   }
   
   void load();

@@ -10,6 +10,7 @@
 #include <iostream>
 #include "process.hpp"
 #include "dispatcher.h"
+#include "config.h"
 #include <unordered_set>
 
 class Terminal : public Gtk::TextView {
@@ -64,6 +65,9 @@ private:
   std::string stdin_buffer;
   
   size_t deleted_lines=0;
+  
+  std::shared_ptr<Config::Terminal> terminal_config;
+  std::shared_ptr<Config::Source> source_config;
   
   std::unordered_set<InProgress*> in_progresses;
   std::mutex in_progresses_mutex;

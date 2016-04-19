@@ -25,8 +25,12 @@ namespace sigc {
 
 Window::Window() : notebook(Notebook::get()) {
   Directories* directories = &Directories::get();
-  Config* config = &Config::get();
   EntryBox* entrybox = &EntryBox::get();
+  
+  config = Config::share();
+  window_config = shared_member(config, &Config::window);
+  source_config = shared_member(config, &Config::source);
+  project_config = shared_member(config, &Config::project);
   
   terminal = &Terminal::get();
   JDEBUG("start");
@@ -36,7 +40,7 @@ Window::Window() : notebook(Notebook::get()) {
   set_menu_actions();
     
   configure();
-  set_default_size(config->window.default_size.first, config->window.default_size.second);
+  set_default_size(window_config->default_size.first, window_config->default_size.second);
   
   //PluginApi(&this->notebook, &this->menu);
   
@@ -47,8 +51,8 @@ Window::Window() : notebook(Notebook::get()) {
   notebook_vbox.pack_start(notebook);
   notebook_vbox.pack_end(*entrybox, Gtk::PACK_SHRINK);
   directory_and_notebook_panes.pack2(notebook_vbox, Gtk::SHRINK);
-  directory_and_notebook_panes.set_position(static_cast<int>(0.2*config->window.default_size.first));
-  vpaned.set_position(static_cast<int>(0.75*config->window.default_size.second));
+  directory_and_notebook_panes.set_position(static_cast<int>(0.2*window_config->default_size.first));
+  vpaned.set_position(static_cast<int>(0.75*window_config->default_size.second));
   vpaned.pack1(directory_and_notebook_panes, true, false);
   
   terminal_scrolled_window.add(*terminal);
@@ -128,7 +132,7 @@ Window::Window() : notebook(Notebook::get()) {
     about.hide();
   });
   
-  about.set_version(config->window.version);
+  about.set_version(window_config->version);
   about.set_authors({"(in order of appearance)",
                      "Ted Johan Kristoffersen", 
                      "Jørgen Lien Sellæg",
@@ -143,14 +147,13 @@ Window::Window() : notebook(Notebook::get()) {
 } // Window constructor
 
 void Window::configure() {
-  Config* config = &Config::get();
   Directories* directories = &Directories::get();
   Menu* menu = &Menu::get();
   
   config->load();
   auto style_context = Gtk::StyleContext::create();
   auto screen = Gdk::Screen::get_default();
-  auto css_provider = Gtk::CssProvider::get_named(config->window.theme_name, config->window.theme_variant);
+  auto css_provider = Gtk::CssProvider::get_named(window_config->theme_name, window_config->theme_variant);
   //TODO: add check if theme exists, or else write error to terminal
   style_context->add_provider_for_screen(screen, css_provider, GTK_STYLE_PROVIDER_PRIORITY_SETTINGS);
   directories->update();
@@ -161,14 +164,13 @@ void Window::configure() {
 void Window::set_menu_actions() {
   auto &menu = Menu::get();
   EntryBox* entrybox = &EntryBox::get();
-  Config* config = &Config::get();
   Directories* directories = &Directories::get();
   
   menu.add_action("about", [this]() {
     about.show();
     about.present();
   });
-  menu.add_action("preferences", [this, config]() {
+  menu.add_action("preferences", [this]() {
     notebook.open(config->juci_home_path()/"config"/"config.json");
   });
   menu.add_action("quit", [this]() {
@@ -252,7 +254,7 @@ void Window::set_menu_actions() {
       directories->open(path);
   });
   
-  menu.add_action("save", [this, config]() {
+  menu.add_action("save", [this]() {
     if(notebook.get_current_page()!=-1) {
       if(notebook.save_current()) {
         if(notebook.get_current_page()!=-1) {
@@ -384,13 +386,13 @@ void Window::set_menu_actions() {
     }
   });
   
-  menu.add_action("source_find_documentation", [this, config]() {
+  menu.add_action("source_find_documentation", [this]() {
     if(notebook.get_current_page()!=-1) {
       if(notebook.get_current_view()->get_token_data) {
         auto data=notebook.get_current_view()->get_token_data();        
         if(data.size()>0) {
-          auto documentation_search=config->source.documentation_searches.find(data[0]);
-          if(documentation_search!=config->source.documentation_searches.end()) {
+          auto documentation_search=source_config->documentation_searches.find(data[0]);
+          if(documentation_search!=source_config->documentation_searches.end()) {
             std::string token_query;
             for(size_t c=1;c<data.size();c++) {
               if(data[c].size()>0) {
@@ -558,24 +560,24 @@ void Window::set_menu_actions() {
     });
     entrybox->show();
   });
-  menu.add_action("compile_and_run", [this, config]() {
+  menu.add_action("compile_and_run", [this]() {
     if(Project::compiling || Project::debugging)
       return;
     
     Project::current_language=Project::get_language();
     
-    if(config->project.save_on_compile_or_run)
+    if(project_config->save_on_compile_or_run)
       Project::save_files(Project::current_language->build->project_path);
     
     Project::current_language->compile_and_run();
   });
-  menu.add_action("compile", [this, config]() {
+  menu.add_action("compile", [this]() {
     if(Project::compiling || Project::debugging)
       return;
             
     Project::current_language=Project::get_language();
     
-    if(config->project.save_on_compile_or_run)
+    if(project_config->save_on_compile_or_run)
       Project::save_files(Project::current_language->build->project_path);
     
     Project::current_language->compile();
@@ -641,7 +643,7 @@ void Window::set_menu_actions() {
     });
     entrybox->show();
   });
-  menu.add_action("debug_start_continue", [this, config](){
+  menu.add_action("debug_start_continue", [this](){
     if(Project::compiling)
       return;
     else if(Project::debugging) {
@@ -651,7 +653,7 @@ void Window::set_menu_actions() {
         
     Project::current_language=Project::get_language();
     
-    if(config->project.save_on_compile_or_run)
+    if(project_config->save_on_compile_or_run)
       Project::save_files(Project::current_language->build->project_path);
     
     Project::current_language->debug_start();
@@ -838,7 +840,6 @@ bool Window::on_key_press_event(GdkEventKey *event) {
 }
 
 bool Window::on_delete_event(GdkEventAny *event) {
-  Config* config = &Config::get();
   Directories* directories = &Directories::get();
   try {
     boost::property_tree::ptree pt_root, pt_files;

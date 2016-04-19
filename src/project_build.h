@@ -3,11 +3,13 @@
 
 #include <boost/filesystem.hpp>
 #include "cmake.h"
+#include "config.h"
 
 namespace Project {
   class Build {
+    std::shared_ptr<Config::Project> project_config;
   public:
-    Build() {}
+    Build();
     virtual ~Build() {}
     
     boost::filesystem::path project_path;

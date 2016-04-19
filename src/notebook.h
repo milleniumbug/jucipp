@@ -10,6 +10,7 @@
 #include <stdexcept>
 #include <sigc++/sigc++.h>
 #include <boost/filesystem.hpp>
+#include "config.h"
 
 struct OpenFileError : std::runtime_error
 {
@@ -64,6 +65,8 @@ private:
   std::vector<std::unique_ptr<Gtk::ScrolledWindow> > scrolled_windows;
   std::vector<std::unique_ptr<Gtk::HBox> > hboxes;
   std::vector<std::unique_ptr<TabLabel> > tab_labels;
+  
+  std::shared_ptr<Config::Source> source_config;
   
   size_t last_index;
 };

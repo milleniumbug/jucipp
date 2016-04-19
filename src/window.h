@@ -4,6 +4,7 @@
 #include <gtkmm.h>
 #include "notebook.h"
 #include "terminal.h"
+#include "config.h"
 #include <atomic>
 
 class Window : public Gtk::ApplicationWindow {
@@ -30,6 +31,10 @@ private:
   Gtk::HBox info_and_status_hbox;
   Gtk::AboutDialog about;
   Terminal* terminal;
+  std::shared_ptr<Config> config;
+  std::shared_ptr<Config::Window> window_config;
+  std::shared_ptr<Config::Source> source_config;
+  std::shared_ptr<Config::Project> project_config;
 
   void configure();
   void set_menu_actions();
