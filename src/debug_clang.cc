@@ -33,6 +33,7 @@ Debug::Clang::Clang(): state(lldb::StateType::eStateInvalid), buffer_size(131072
   if(boost::filesystem::exists(debugserver_path))
     setenv("LLDB_DEBUGSERVER_PATH", debugserver_path.string().c_str(), 0);
 #endif
+  terminal = &Terminal::get();
 }
 
 void Debug::Clang::start(const std::string &command, const boost::filesystem::path &path,
@@ -40,7 +41,6 @@ void Debug::Clang::start(const std::string &command, const boost::filesystem::pa
                   std::function<void(int exit_status)> callback,
                   std::function<void(const std::string &status)> status_callback,
                   std::function<void(const boost::filesystem::path &file_path, int line_nr, int line_index)> stop_callback) {
-  Terminal* terminal = &Terminal::get();
   if(!debugger) {
     lldb::SBDebugger::Initialize();
     debugger=std::unique_ptr<lldb::SBDebugger>(new lldb::SBDebugger(lldb::SBDebugger::Create(true, log, nullptr)));
@@ -108,7 +108,7 @@ void Debug::Clang::start(const std::string &command, const boost::filesystem::pa
   }
   if(debug_thread.joinable())
     debug_thread.join();
-  debug_thread=std::thread([this, callback, status_callback, stop_callback, terminal]() {
+  debug_thread=std::thread([this, callback, status_callback, stop_callback]() {
     lldb::SBEvent event;
     while(true) {
       std::unique_lock<std::mutex> lock(event_mutex);
@@ -221,7 +221,6 @@ void Debug::Clang::continue_debug() {
 
 void Debug::Clang::stop() {
   std::unique_lock<std::mutex> lock(event_mutex);
-  Terminal* terminal = &Terminal::get();
   if(state==lldb::StateType::eStateRunning) {
     auto error=process->Stop();
     if(error.Fail())
@@ -231,7 +230,6 @@ void Debug::Clang::stop() {
 
 void Debug::Clang::kill() {
   std::unique_lock<std::mutex> lock(event_mutex);
-  Terminal* terminal = &Terminal::get();
   if(process) {
     auto error=process->Kill();
     if(error.Fail())
@@ -446,7 +444,6 @@ bool Debug::Clang::is_running() {
 }
 
 void Debug::Clang::add_breakpoint(const boost::filesystem::path &file_path, int line_nr) {
-  Terminal* terminal = &Terminal::get();
   std::unique_lock<std::mutex> lock(event_mutex);
   if(state==lldb::eStateStopped || state==lldb::eStateRunning) {
     if(!(process->GetTarget().BreakpointCreateByLocation(file_path.string().c_str(), line_nr)).IsValid())
@@ -456,7 +453,6 @@ void Debug::Clang::add_breakpoint(const boost::filesystem::path &file_path, int 
 
 void Debug::Clang::remove_breakpoint(const boost::filesystem::path &file_path, int line_nr, int line_count) {
   std::unique_lock<std::mutex> lock(event_mutex);
-  Terminal* terminal = &Terminal::get();
   if(state==lldb::eStateStopped || state==lldb::eStateRunning) {
     auto target=process->GetTarget();
     for(int line_nr_try=line_nr;line_nr_try<line_count;line_nr_try++) {

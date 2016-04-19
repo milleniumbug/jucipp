@@ -8,6 +8,7 @@
 #include <lldb/API/SBProcess.h>
 #include <thread>
 #include <mutex>
+#include "terminal.h"
 
 namespace Debug {
   class Clang {
@@ -79,6 +80,8 @@ namespace Debug {
     std::mutex event_mutex;
     
     size_t buffer_size;
+    
+    Terminal* terminal;
   };
 }
 
