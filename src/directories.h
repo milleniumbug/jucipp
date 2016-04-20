@@ -17,8 +17,9 @@ public:
   class TreeStore : public Gtk::TreeStore {
   private:
     Notebook* notebook;
+    Directories* directories;
   protected:
-    TreeStore(Notebook* notebook) : notebook(notebook) {}
+    TreeStore(Notebook* notebook, Directories* directories);
     
     bool row_drop_possible_vfunc(const Gtk::TreeModel::Path &path, const Gtk::SelectionData &selection_data) const override;
     bool drag_data_received_vfunc(const TreeModel::Path &path, const Gtk::SelectionData &selection_data) override;
@@ -39,7 +40,7 @@ public:
       Gtk::TreeModelColumn<Gdk::RGBA> color;
     };
     
-    static Glib::RefPtr<TreeStore> create(Notebook* notebook) {return Glib::RefPtr<TreeStore>(new TreeStore(notebook));}
+    static Glib::RefPtr<TreeStore> create(Notebook* notebook, Directories* directories) {return Glib::RefPtr<TreeStore>(new TreeStore(notebook, directories));}
   };
 
 private:

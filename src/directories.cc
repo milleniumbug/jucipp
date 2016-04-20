@@ -120,12 +120,18 @@ bool Directories::TreeStore::drag_data_delete_vfunc (const Gtk::TreeModel::Path 
   return false;
 }
 
+Directories::TreeStore::TreeStore(Notebook* notebook, Directories* directories) :
+notebook(notebook),
+directories(directories) {
+  
+}
+
 Directories::Directories() : Gtk::TreeView(), stop_update_thread(false) {
   notebook = &Notebook::get();
   EntryBox* entrybox = &EntryBox::get();
   Terminal* terminal = &Terminal::get();
   this->set_enable_tree_lines(true);
-  tree_store = TreeStore::create(notebook);
+  tree_store = TreeStore::create(notebook, this);
   tree_store->set_column_types(column_record);
   set_model(tree_store);
   append_column("", column_record.name);
