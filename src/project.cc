@@ -595,7 +595,7 @@ void Project::Python::compile_and_run() {
 void Project::JavaScript::compile_and_run() {
   Notebook* notebook = &Notebook::get();
   Terminal* terminal = &Terminal::get();
-  auto command="node "+filesystem::escape_argument(notebook->get_current_view()->file_path.string());
+  auto command="node --harmony "+filesystem::escape_argument(notebook->get_current_view()->file_path.string());
   terminal->print("Running "+command+"\n");
   terminal->async_process(command, notebook->get_current_view()->file_path.parent_path(), [command, terminal](int exit_status) {
     terminal->async_print(command+" returned: "+std::to_string(exit_status)+'\n');

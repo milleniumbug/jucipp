@@ -2,14 +2,17 @@
 #include "config.h"
 
 std::unique_ptr<Project::Build> Project::get_build(const boost::filesystem::path &path) {
-  auto cmake=new CMake(path);
+  std::unique_ptr<Project::Build> cmake(new CMake(path));
   if(!cmake->project_path.empty())
-    return std::unique_ptr<Project::Build>(cmake);
+    return cmake;
   else
     return std::unique_ptr<Project::Build>(new Project::Build());
 }
 
 boost::filesystem::path Project::Build::get_default_build_path() {
+  if(project_path.empty())
+    return boost::filesystem::path();
+    
   boost::filesystem::path default_build_path=project_config->default_build_path;
   
   const std::string path_variable_project_directory_name="<project_directory_name>";
@@ -30,6 +33,9 @@ boost::filesystem::path Project::Build::get_default_build_path() {
 }
 
 boost::filesystem::path Project::Build::get_debug_build_path() {
+  if(project_path.empty())
+    return boost::filesystem::path();
+  
   boost::filesystem::path debug_build_path=project_config->debug_build_path;
   
   const std::string path_variable_project_directory_name="<project_directory_name>";

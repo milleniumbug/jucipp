@@ -2,7 +2,7 @@
 #define JUCI_FILES_H_
 #include <string>
 
-#define JUCI_VERSION "1.1.2-1"
+#define JUCI_VERSION "1.1.3"
 
 const std::string configjson =
 "{\n"
@@ -13,8 +13,8 @@ const std::string configjson =
 "    },\n"
 "    \"gtk_theme\": {\n"
 "        \"name_comment\": \"Use \\\"\\\" for default theme, At least these two exist on all systems: Adwaita, Raleigh\",\n"
-"        \"name\": \"Adwaita\",\n"
-"        \"variant_comment\": \"Use \\\"\\\" for default variant, and \\\"dark\\\" for dark theme variant\",\n"
+"        \"name\": \"\",\n"
+"        \"variant_comment\": \"Use \\\"\\\" for default variant, and \\\"dark\\\" for dark theme variant. Note that not all themes support dark variant, but for instance Adwaita does\",\n"
 "        \"variant\": \"\"\n"
 "    },\n"
 "    \"terminal\": {\n"

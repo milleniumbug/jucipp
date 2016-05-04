@@ -31,6 +31,7 @@ private:
   std::shared_ptr<Config::Window> window_config;
   std::shared_ptr<Config::Source> source_config;
   std::shared_ptr<Config::Project> project_config;
+  Glib::RefPtr<Gtk::CssProvider> css_provider;
 
   void configure();
   void set_menu_actions();

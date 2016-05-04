@@ -1,5 +1,4 @@
 #include "window.h"
-#include "logging.h"
 #include "config.h"
 #include "menu.h"
 #include "directories.h"
@@ -33,7 +32,7 @@ Window::Window() : notebook(Notebook::get()) {
   project_config = shared_member(config, &Config::project);
   
   terminal = &Terminal::get();
-  JDEBUG("start");
+  
   set_title("juCi++");
   set_events(Gdk::POINTER_MOTION_MASK|Gdk::FOCUS_CHANGE_MASK|Gdk::SCROLL_MASK|Gdk::LEAVE_NOTIFY_MASK);
   
@@ -143,7 +142,6 @@ Window::Window() : notebook(Notebook::get()) {
   about.set_comments("This is an open source IDE with high-end features to make your programming experience juicy");
   about.set_license_type(Gtk::License::LICENSE_MIT_X11);
   about.set_transient_for(*this);
-  JDEBUG("end");
 } // Window constructor
 
 void Window::configure() {
@@ -151,11 +149,17 @@ void Window::configure() {
   Menu* menu = &Menu::get();
   
   config->load();
-  auto style_context = Gtk::StyleContext::create();
   auto screen = Gdk::Screen::get_default();
-  auto css_provider = Gtk::CssProvider::get_named(window_config->theme_name, window_config->theme_variant);
+  if(css_provider)
+    Gtk::StyleContext::remove_provider_for_screen(screen, css_provider);
+  if(config->window.theme_name.empty()) {
+    css_provider=Gtk::CssProvider::create();
+    Gtk::Settings::get_default()->property_gtk_application_prefer_dark_theme()=(config->window.theme_variant=="dark");
+  }
+  else
+    css_provider=Gtk::CssProvider::get_named(config->window.theme_name, config->window.theme_variant);
   //TODO: add check if theme exists, or else write error to terminal
-  style_context->add_provider_for_screen(screen, css_provider, GTK_STYLE_PROVIDER_PRIORITY_SETTINGS);
+  Gtk::StyleContext::add_provider_for_screen(screen, css_provider, GTK_STYLE_PROVIDER_PRIORITY_SETTINGS);
   directories->update();
   menu->set_keys();
   terminal->configure();
@@ -231,11 +235,12 @@ void Window::set_menu_actions() {
         terminal->print("Error: "+cpp_main_path.string()+" already exists.\n", true);
         return;
       }
-      std::string cmakelists="cmake_minimum_required(VERSION 2.8)\n\nproject("+project_name+")\n\nset(CMAKE_CXX_FLAGS \"${CMAKE_CXX_FLAGS} -std=c++1y -Wall\")\n\nadd_executable("+project_name+" main.cpp)\n";
-      std::string cpp_main="#include <iostream>\n\nusing namespace std;\n\nint main() {\n  cout << \"Hello World!\" << endl;\n\n  return 0;\n}\n";
+      std::string cmakelists="cmake_minimum_required(VERSION 2.8)\n\nproject("+project_name+")\n\nset(CMAKE_CXX_FLAGS \"${CMAKE_CXX_FLAGS} -std=c++1y -Wall -Wextra -Wno-unused-parameter\")\n\nadd_executable("+project_name+" main.cpp)\n";
+      std::string cpp_main="#include <iostream>\n\nint main() {\n  std::cout << \"Hello World!\\n\";\n}\n";
       if(filesystem::write(cmakelists_path, cmakelists) && filesystem::write(cpp_main_path, cpp_main)) {
         directories->open(project_path);
         notebook.open(cpp_main_path);
+        Directories::get().update();
         terminal->print("C++ project "+project_name+" created.\n");
       }
       else

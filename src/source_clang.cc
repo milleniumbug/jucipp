@@ -25,11 +25,9 @@ clang::Index Source::ClangViewParse::clang_index(0, 0);
 Source::ClangViewParse::ClangViewParse(const boost::filesystem::path &file_path, Glib::RefPtr<Gsv::Language> language, Terminal* terminal):
 Source::View(file_path, language),
 terminal(terminal) {
-  JDEBUG("start");
   auto config = Config::get();
   source_config = shared_member(config, &Config::source);
   terminal_config = shared_member(config, &Config::terminal);
-  
   auto tag_table=get_buffer()->get_tag_table();
   for (auto &item : source_config->clang_types) {
     if(!tag_table->lookup(item.second)) {
@@ -46,8 +44,6 @@ terminal(terminal) {
     type_tooltips.hide();
     diagnostic_tooltips.hide();
   });
-  
-  JDEBUG("end");
 }
 
 void Source::ClangViewParse::configure() {
@@ -70,8 +66,7 @@ void Source::ClangViewParse::configure() {
         //   //    if (style->property_italic_set()) tag->property_italic() = style->property_italic();
         //   //    if (style->property_line_background_set()) tag->property_line_background() = style->property_line_background();
         //   // if (style->property_underline_set()) tag->property_underline() = style->property_underline();
-      } else
-        JINFO("Style " + item.second + " not found in " + scheme->get_name());
+      }
     }
   }
 }
@@ -131,6 +126,7 @@ void Source::ClangViewParse::parse_initialize() {
           auto expected=ParseProcessState::PROCESSING;
           if(parse_process_state.compare_exchange_strong(expected, ParseProcessState::POSTPROCESSING)) {
             clang_tokens=clang_tu->get_tokens(0, parse_thread_buffer.bytes()-1);
+            diagnostics=clang_tu->get_diagnostics();
             parse_lock.unlock();
             dispatcher.post([this] {
               std::unique_lock<std::mutex> parse_lock(parse_mutex, std::defer_lock);
@@ -182,8 +178,9 @@ void Source::ClangViewParse::soft_reparse() {
 
 std::vector<std::string> Source::ClangViewParse::get_compilation_commands() {
   auto build=Project::get_build(file_path);
+  auto default_build_path=build->get_default_build_path();
   build->update_default_build();
-  clang::CompilationDatabase db(build->get_default_build_path().string());
+  clang::CompilationDatabase db(default_build_path.string());
   clang::CompileCommands commands(file_path.string(), db);
   std::vector<clang::CompileCommand> cmds = commands.get_commands();
   std::vector<std::string> arguments;
@@ -212,6 +209,11 @@ std::vector<std::string> Source::ClangViewParse::get_compilation_commands() {
   arguments.emplace_back("-fretain-comments-from-system-headers");
   if(file_path.extension()==".h") //TODO: temporary fix for .h-files (parse as c++)
     arguments.emplace_back("-xc++");
+
+  if(!default_build_path.empty()) {
+    arguments.emplace_back("-working-directory");
+    arguments.emplace_back(default_build_path.string());
+  }
 
   return arguments;
 }
@@ -260,7 +262,6 @@ void Source::ClangViewParse::update_diagnostics() {
   fix_its.clear();
   get_buffer()->remove_tag_by_name("def:warning_underline", get_buffer()->begin(), get_buffer()->end());
   get_buffer()->remove_tag_by_name("def:error_underline", get_buffer()->begin(), get_buffer()->end());
-  auto diagnostics=clang_tu->get_diagnostics();
   size_t num_warnings=0;
   size_t num_errors=0;
   size_t num_fix_its=0;
@@ -380,12 +381,15 @@ void Source::ClangViewParse::show_type_tooltips(const Gdk::Rectangle &rectangle)
     get_iter_at_location(iter, location_x, location_y);
     Gdk::Rectangle iter_rectangle;
     get_iter_location(iter, iter_rectangle);
+    if(iter.ends_line() && location_x>iter_rectangle.get_x())
+      return;
     if(iter_rectangle.get_x()>location_x) {
       if(!iter.starts_line()) {
         if(!iter.backward_char())
           return;
       }
     }
+    
     bool found_token=false;
     if(!((*iter>='a' && *iter<='z') || (*iter>='A' && *iter<='Z') || (*iter>='0' && *iter<='9') || *iter=='_')) {
       if(!iter.backward_char())

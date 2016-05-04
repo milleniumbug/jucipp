@@ -3,8 +3,8 @@
 - Installation
   - Linux
     - [Debian testing/Linux Mint/Ubuntu](#debian-testinglinux-mintubuntu)
-    - [Debian stable/Linux Mint Debian Edition](#debian-stablelinux-mint-debian-edition)
-    - [Arch Linux](#arch-linux)
+    - [Debian stable/Linux Mint Debian Edition/Raspbian](#debian-stablelinux-mint-debian-editionraspbian)
+    - [Arch Linux/Manjaro Linux](#arch-linuxmanjaro-linux)
     - [Fedora 23](#fedora-23)
     - [Mageia 5](#mageia-5)
   - OS X
@@ -16,7 +16,7 @@
 ## Debian testing/Linux Mint/Ubuntu
 Install dependencies:
 ```sh
-sudo apt-get install git cmake make g++ libclang-3.6-dev liblldb-3.6-dev clang-format-3.6 pkg-config libboost-system-dev libboost-thread-dev libboost-filesystem-dev libboost-log-dev libboost-regex-dev libgtksourceviewmm-3.0-dev aspell-en libaspell-dev
+sudo apt-get install git cmake make g++ libclang-3.6-dev liblldb-3.6-dev clang-format-3.6 pkg-config libboost-filesystem-dev libboost-regex-dev libgtksourceviewmm-3.0-dev aspell-en libaspell-dev
 ```
 
 Get juCi++ source, compile and install:
@@ -29,10 +29,10 @@ make
 sudo make install
 ```
 
-## Debian stable/Linux Mint Debian Edition
+## Debian stable/Linux Mint Debian Edition/Raspbian
 Install dependencies:
 ```sh
-sudo apt-get install git cmake make g++ libclang-3.5-dev liblldb-3.5-dev clang-format-3.5 pkg-config libboost-system-dev libboost-thread-dev libboost-filesystem-dev libboost-log-dev libboost-regex-dev libgtksourceviewmm-3.0-dev aspell-en libaspell-dev
+sudo apt-get install git cmake make g++ libclang-3.5-dev liblldb-3.5-dev clang-format-3.5 pkg-config libboost-filesystem-dev libboost-regex-dev libgtksourceviewmm-3.0-dev aspell-en libaspell-dev
 ```
 
 Get juCi++ source, compile and install:
@@ -45,8 +45,8 @@ make
 sudo make install
 ```
 
-##Arch Linux
-**Arch Linux's lldb package has an issue that is being worked on, and for the time being you have to build juCi++ without debug support. If you have the lldb package installed, please remove this package before building juCi++.**
+##Arch Linux/Manjaro Linux
+**Arch Linux's lldb package has an issue that is being worked on (see https://github.com/cppit/jucipp/issues/191), and for the time being you have to build juCi++ without debug support. If you have the lldb package installed, please remove this package before building juCi++.**
 
 Package available in the Arch User Repository:
 https://aur.archlinux.org/packages/jucipp-git/
@@ -137,14 +137,14 @@ make install
 ```
 
 ##Windows with MSYS2 (https://msys2.github.io/)
-**MSYS2 does not yet support lldb, but you can still compile juCi++ without debug support.**
-
-Note that juCi++ must be run in a MinGW Shell (for instance MinGW-w64 Win64 Shell). 
+**MSYS2 does not yet support lldb (see https://github.com/cppit/jucipp/issues/190), but you can still compile juCi++ without debug support.**
 
 Install dependencies (replace `x86_64` with `i686` for 32-bit MSYS2 installs):
 ```sh
 pacman -S git mingw-w64-x86_64-cmake make mingw-w64-x86_64-toolchain mingw-w64-x86_64-clang mingw-w64-x86_64-gtkmm3 mingw-w64-x86_64-gtksourceviewmm3 mingw-w64-x86_64-boost mingw-w64-x86_64-aspell mingw-w64-x86_64-aspell-en
 ```
+
+Note that juCi++ must be built and run in a MinGW Shell (for instance MinGW-w64 Win64 Shell).
 
 Get juCi++ source, compile and install (replace `mingw64` with `mingw32` for 32-bit MSYS2 installs):
 ```sh
