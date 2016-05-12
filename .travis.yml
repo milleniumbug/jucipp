@@ -5,7 +5,7 @@ env:
   - distribution="fedora"
   - distribution="debian"
   - distribution="debian-testing"
-#  - distribution="arch"
+  - distribution="arch"
 services:
   - docker
   

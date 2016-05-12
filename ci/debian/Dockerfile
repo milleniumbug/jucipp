@@ -16,7 +16,6 @@ RUN apt-get update \
     libaspell-dev \
  && rm -rf /var/lib/apt/lists/*
 
-ENV make_args ""
+ENV make_args "-j 2"
 ENV cmake_args "-DCMAKE_CXX_COMPILER=g++"
 
-CMD make ${make_args}

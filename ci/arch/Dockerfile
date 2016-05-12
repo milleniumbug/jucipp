@@ -11,7 +11,5 @@ RUN pacman -Syuu --noconfirm \
     aspell \
     aspell-en
 
-ENV make_args ""
+ENV make_args "-j 2"
 ENV cmake_args "-DCMAKE_CXX_COMPILER=g++"
-
-CMD make ${make_args}

@@ -17,6 +17,7 @@ services:
      volumes:
        - ../:/jucipp/
      entrypoint: /jucipp/ci/entrypoint.sh
+     command: make
   fedora:
     build: fedora
     volumes:
