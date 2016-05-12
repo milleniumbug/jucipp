@@ -7,7 +7,18 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+
+//Temporary fix for current Arch Linux boost linking problem
+#ifdef __GNUC_PREREQ
+#if __GNUC_PREREQ(5,1)
+#include <regex>
+#define REGEX_NS std
+#endif
+#endif
+#ifndef REGEX_NS
 #include <boost/regex.hpp>
+#define REGEX_NS boost
+#endif
 
 #include "selectiondialog.h"
 #include "tooltips.h"
@@ -78,6 +89,7 @@ namespace Source {
     
     std::function<void()> auto_indent;
     std::function<Offset()> get_declaration_location;
+    std::function<Offset(const Token &token)> get_implementation_location;
     std::function<std::vector<std::pair<Offset, std::string> >(const Token &token)> get_usages;
     std::function<void()> goto_method;
     std::function<Token()> get_token;
@@ -137,9 +149,9 @@ namespace Source {
     bool find_right_bracket_forward(Gtk::TextIter iter, Gtk::TextIter &found_iter);
     bool find_left_bracket_backward(Gtk::TextIter iter, Gtk::TextIter &found_iter);
     
-    boost::regex bracket_regex;
-    boost::regex no_bracket_statement_regex;
-    boost::regex no_bracket_no_para_statement_regex;
+    const static REGEX_NS::regex bracket_regex;
+    const static REGEX_NS::regex no_bracket_statement_regex;
+    const static REGEX_NS::regex no_bracket_no_para_statement_regex;
     
     bool on_key_press_event(GdkEventKey* key) override;
     bool on_key_press_event_basic(GdkEventKey* key);
@@ -157,6 +169,8 @@ namespace Source {
     guint previous_non_modifier_keyval=0;
     guint last_keyval=0;
   private:
+    Gsv::DrawSpacesFlags parse_show_whitespace_characters(const std::string &text);
+    
     GtkSourceSearchContext *search_context;
     GtkSourceSearchSettings *search_settings;
     static void search_occurrences_updated(GtkWidget* widget, GParamSpec* property, gpointer data);
