@@ -13,3 +13,5 @@ RUN pacman -Syuu --noconfirm \
 
 ENV make_args ""
 ENV cmake_args "-DCMAKE_CXX_COMPILER=g++"
+
+CMD make ${make_args}

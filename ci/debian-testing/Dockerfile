@@ -1,13 +1,13 @@
-FROM debian:stable
+FROM debian:testing
 
 RUN apt-get update \
  && apt-get install -y --fix-missing \
     cmake \
     make \
     g++ \
-    libclang-3.5-dev \
-    liblldb-3.5-dev \
-    clang-format-3.5 \
+    libclang-3.6-dev \
+    liblldb-3.6-dev \
+    clang-format-3.6 \
     pkg-config \
     libboost-filesystem-dev \
     libboost-regex-dev \

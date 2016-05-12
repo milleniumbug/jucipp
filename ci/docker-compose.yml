@@ -12,16 +12,20 @@ services:
       - ../:/jucipp/
     entrypoint: /jucipp/ci/entrypoint.sh
     command: make
+  debian-testing:
+     build: debian-testing
+     volumes:
+       - ../:/jucipp/
+     entrypoint: /jucipp/ci/entrypoint.sh
   fedora:
     build: fedora
     volumes:
       - ../:/jucipp/
     entrypoint: /jucipp/ci/entrypoint.sh
     command: make
-#  arch:
-#    build: arch
-#    volumes:
-#      - ../:/jucipp/
-#    entrypoint: /jucipp/ci/entrypoint.sh
-#    command: make
-    
+  arch:
+    build: arch
+    volumes:
+      - ../:/jucipp/
+    entrypoint: /jucipp/ci/entrypoint.sh
+    command: make
