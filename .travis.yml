@@ -1,27 +1,29 @@
 sudo: required
-language: cpp
 
 env:
-  - distribution: ubuntu
-    version: 16.04
-    init: /sbin/init
-    run_opts: ""
-  - distribution: fedora
-    version: 23
-    init: /sbin/init
-    run_opts: ""
-
+  - distribution="ubuntu"
+  - distribution="fedora"
+  - distribution="debian"
+  - distribution="debian-testing"
+  - distribution="arch"
 services:
   - docker
   
 before_install:
-  - sudo docker pull ${distribution}:${version}
-  - sudo docker build --rm=true --file=ci/${distribution}-${version}.docker --tag=${distribution}-${version}:jucipp ci
-
+  - sudo rm /usr/local/bin/docker-compose
+  - echo "deb https://apt.dockerproject.org/repo ubuntu-trusty main" > docker.list
+  - sudo mv docker.list /etc/apt/sources.list.d/docker.list
+  - sudo apt-key adv --keyserver hkp://pgp.mit.edu:80 --recv-keys 58118E89F3A912897C070ADBF76221572C52609D
+  - sudo apt-get update
+  - sudo apt-get purge lxc-docker
+  - sudo apt-get install --yes --force-yes -o Dpkg::Options::='--force-confnew' linux-image-extra-$(uname -r) docker-engine
+  - curl -L https://github.com/docker/compose/releases/download/1.7.1/docker-compose-`uname -s`-`uname -m` > docker-compose
+  - chmod +x docker-compose
+  - sudo mv docker-compose /usr/local/bin/docker-compose
+  - sudo service docker stop
+  - sudo service docker start
+  
 script:
-  - container_id=$(mktemp)
-  - sudo docker run --detach --volume="${PWD}":/home/:rw ${run_opts} ${distribution}-${version}:jucipp "${init}" > "${container_id}"
-  
-  - sudo docker exec "$(cat ${container_id})" /home/ci/${distribution}-${version}.build
-  
-  - sudo docker stop "$(cat ${container_id})"
+  - cd ci
+  - sudo docker-compose up ${distribution}
+  - sudo rm ../build -rf

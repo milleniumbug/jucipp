@@ -1,0 +1,32 @@
+version: "2"
+services:
+  ubuntu:
+    build: ubuntu
+    volumes:
+      - ../:/jucipp/
+    entrypoint: /jucipp/ci/entrypoint.sh
+    command: make
+  debian:
+    build: debian
+    volumes:
+      - ../:/jucipp/
+    entrypoint: /jucipp/ci/entrypoint.sh
+    command: make
+  debian-testing:
+     build: debian-testing
+     volumes:
+       - ../:/jucipp/
+     entrypoint: /jucipp/ci/entrypoint.sh
+     command: make
+  fedora:
+    build: fedora
+    volumes:
+      - ../:/jucipp/
+    entrypoint: /jucipp/ci/entrypoint.sh
+    command: make
+  arch:
+    build: arch
+    volumes:
+      - ../:/jucipp/
+    entrypoint: /jucipp/ci/entrypoint.sh
+    command: make
