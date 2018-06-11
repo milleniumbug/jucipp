@@ -1,7 +1,7 @@
 # juCi++ [![Build Status](https://travis-ci.org/cppit/jucipp.svg?branch=master)](https://travis-ci.org/cppit/jucipp) [![Build status](https://ci.appveyor.com/api/projects/status/tj8ants9q8ouuoob/branch/master?svg=true)](https://ci.appveyor.com/project/zalox/jucipp-6hwdu/branch/master)
 
 ###### a lightweight, platform independent C++-IDE with support for C++11, C++14 and C++17 features depending on libclang version.
-<!--<img src="https://gitlab.com/cppit/jucipp/blob/master/docs/images/screenshot3.png"/>-->
+<!--<img src="https://gitlab.com/cppit/jucipp/raw/master/docs/images/screenshot3.png"/>-->
 ## About
 Current IDEs struggle with C++ support due to the complexity of
 the programming language. juCI++, however, is designed especially 
@@ -51,11 +51,11 @@ See [enhancements](https://gitlab.com/cppit/jucipp/labels/enhancement) for plann
 ## Screenshots
 <table border="0">
 <tr>
-<td><img src="https://gitlab.com/cppit/jucipp/blob/master/docs/images/screenshot1c.png" width="380"/></td>
-<td><img src="https://gitlab.com/cppit/jucipp/blob/master/docs/images/screenshot2c.png" width="380"/></td>
+<td><img src="https://gitlab.com/cppit/jucipp/raw/master/docs/images/screenshot1c.png" width="380"/></td>
+<td><img src="https://gitlab.com/cppit/jucipp/raw/master/docs/images/screenshot2c.png" width="380"/></td>
 </tr><tr>
-<td><img src="https://gitlab.com/cppit/jucipp/blob/master/docs/images/screenshot3c.png" width="380"/></td>
-<td><img src="https://gitlab.com/cppit/jucipp/blob/master/docs/images/screenshot4b.png" width="380"/></td>
+<td><img src="https://gitlab.com/cppit/jucipp/raw/master/docs/images/screenshot3c.png" width="380"/></td>
+<td><img src="https://gitlab.com/cppit/jucipp/raw/master/docs/images/screenshot4b.png" width="380"/></td>
 </tr>
 </table>
 
