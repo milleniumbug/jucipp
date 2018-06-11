@@ -1,6 +1,6 @@
-[submodule "libclangmm"]
-	path = libclangmm
-	url = https://github.com/cppit/libclangmm
 [submodule "tiny-process-library"]
 	path = tiny-process-library
 	url = https://gitlab.com/eidheim/tiny-process-library
+[submodule "libclangmm"]
+	path = libclangmm
+	url = https://gitlab.com/cppit/libclangmm
