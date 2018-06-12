@@ -3,13 +3,13 @@ platform:
 
 environment:
   MSYSTEM: MSYS
+  CTEST_OUTPUT_ON_FAILURE: 1
 
 before_build:
-  - C:\msys64\usr\bin\pacman --noconfirm --ask 20 --sync --refresh --refresh --sysupgrade --sysupgrade
-  - C:\msys64\usr\bin\pacman --noconfirm --sync --refresh --refresh pacman
-  - C:\msys64\usr\bin\pacman --noconfirm --sync --refresh --refresh git
-  - C:\msys64\usr\bin\bash -lc "$(cygpath ${APPVEYOR_BUILD_FOLDER})/ci/update_ci.sh"
+  - C:\msys64\usr\bin\pacman --noconfirm --ask 20 --sync --refresh --sysupgrade
+  - C:\msys64\usr\bin\pacman --noconfirm --sync --refresh pacman
+  - C:\msys64\usr\bin\pacman --noconfirm --sync --refresh git
+  - C:\msys64\usr\bin\pacman --noconfirm --needed --sync mingw-w64-x86_64-cmake make mingw-w64-x86_64-toolchain mingw-w64-x86_64-clang mingw-w64-x86_64-gtkmm3 mingw-w64-x86_64-gtksourceviewmm3 mingw-w64-x86_64-boost mingw-w64-x86_64-aspell mingw-w64-x86_64-aspell-en mingw-w64-x86_64-libgit2
 
 build_script:
-  - C:\msys64\usr\bin\bash -lc "script=compile $(cygpath ${APPVEYOR_BUILD_FOLDER})/ci/execute.sh"
-  - C:\msys64\usr\bin\bash -lc "script=compile make_command='CTEST_OUTPUT_ON_FAILURE=1 make test' $(cygpath ${APPVEYOR_BUILD_FOLDER})/ci/execute.sh"
+  - C:\msys64\usr\bin\bash -lc "$(cygpath ${APPVEYOR_BUILD_FOLDER})/appveyor.sh"
