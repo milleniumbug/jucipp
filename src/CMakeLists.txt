@@ -62,7 +62,7 @@ elseif(APPLE)
 endif()
 
 # add a target to generate API documentation with Doxygen
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake_modules/")
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/share/cmake_modules/")
 find_package(Plantuml)
 find_package(Doxygen)
 if(DOXYGEN_FOUND)
