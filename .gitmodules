@@ -1,6 +1,6 @@
-[submodule "tiny-process-library"]
-	path = tiny-process-library
+[submodule "lib/tiny-process-library"]
+	path = lib/tiny-process-library
 	url = ../../eidheim/tiny-process-library
-[submodule "libclangmm"]
-	path = libclangmm
-	url = ../../cppit/libclangmm
+[submodule "lib/libclangmm"]
+	path = lib/libclangmm
+	url = ../libclangmm
