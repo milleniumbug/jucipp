@@ -3,4 +3,4 @@
 	url = ../../eidheim/tiny-process-library
 [submodule "lib/libclangmm"]
 	path = lib/libclangmm
-	url = ../../libclangmm
+	url = ../../cppit/libclangmm
