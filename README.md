@@ -13,14 +13,16 @@ towards libclang with speed, stability, and ease of use in mind.
 * Syntax highlighting for more than 100 different file types
 * C++ warnings and errors on the fly
 * C++ Fix-its
-* Integrated Clang-Tidy checks possible through clang plugins, for instance (recreating existing build is needed):
-  ```
-  CXX=clang++ CXXFLAGS="-Xclang -add-plugin -Xclang clang-tidy -Xclang -plugin-arg-clang-tidy -Xclang -checks='-*,clang-analyzer-core.*'" juci [project-path]
-  ```
+* Integrated Clang-Tidy checks possible through clang plugins, for instance (recreating existing build is needed): 
+
+```sh
+    CXX=clang++ CXXFLAGS="-Xclang -add-plugin -Xclang clang-tidy -Xclang -plugin-arg-clang-tidy -Xclang -checks='-*, clang-analyzer-core.*'" juci [project-path]
+```
+
 * Debug integration, both local and remote, through lldb
 * Supports the following build systems:
-  * CMake
-  * Meson
+    * CMake
+    * Meson
 * Git support through libgit2
 * Fast C++ autocompletion
 * Tooltips showing type information and doxygen documentation (C++)
@@ -30,9 +32,9 @@ towards libclang with speed, stability, and ease of use in mind.
 * Go to declaration, implementation, methods and usages (C++)
 * OpenCL and CUDA files are supported and parsed as C++
 * Other file types:
-  * Language server protocol support is enabled if `[language identifier]-language-server` executable is found. This executable can be a symbolic link to one of your installed language server binaries.
+    * Language server protocol support is enabled if `[language identifier]-language-server` executable is found. This executable can be a symbolic link to one of your installed language server binaries.
 See [language-server-protocol/specification.md](https://github.com/Microsoft/language-server-protocol/blob/gh-pages/specification.md) for the currently defined language identifiers.
-  * otherwise, only keyword and buffer completion supported
+    * otherwise, only keyword and buffer completion supported
 * Find symbol through Ctags
 * Spell checking depending on file context
 * Run shell commands within juCi++
