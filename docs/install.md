@@ -1,17 +1,17 @@
 # juCi++ Installation Guide
 
 - Installation
-  - Linux
-    - [Debian/Linux Mint/Ubuntu](#debianlinux-mintubuntu)
-    - [Arch Linux/Manjaro Linux](#arch-linuxmanjaro-linux)
-    - [Fedora](#fedora)
-    - [Mageia](#mageia)
-    - [OpenSUSE Tumbleweed](#opensuse-tumbleweed)
-  - [FreeBSD](#freebsd)
-  - MacOS
-    - [Homebrew](#macos-with-homebrew-httpbrewsh)
-  - Windows
-    - [MSYS 2](#windows-with-msys2-httpsmsys2githubio)
+    - Linux
+        - [Debian/Linux Mint/Ubuntu](#debianlinux-mintubuntu)
+        - [Arch Linux/Manjaro Linux](#arch-linuxmanjaro-linux)
+        - [Fedora](#fedora)
+        - [Mageia](#mageia)
+        - [OpenSUSE Tumbleweed](#opensuse-tumbleweed)
+    - [FreeBSD](#freebsd)
+    - MacOS
+        - [Homebrew](#macos-with-homebrew-httpbrewsh)
+    - Windows
+        - [MSYS2](#windows-with-msys2-httpsmsys2githubio)
 - [Run](#run)
 
 ## Debian/Linux Mint/Ubuntu
