@@ -5,8 +5,9 @@ variables:
   script:
     - mkdir build
     - cd build
-    - cmake scan-build ..
+    - scan-build cmake ..
     - scan-build --status-bugs make -j$(nproc)
+    - rm -r *
     - cmake -DBUILD_TESTING=1 ..
     - make -j$(nproc)
     - broadwayd & CTEST_OUTPUT_ON_FAILURE=1 make test
