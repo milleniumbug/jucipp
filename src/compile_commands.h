@@ -19,4 +19,7 @@ public:
   
   /// Return arguments for the given file using libclangmm
   static std::vector<std::string> get_arguments(const boost::filesystem::path &build_path, const boost::filesystem::path &file_path);
+  
+  static bool is_header(const boost::filesystem::path &path);
+  static bool is_source(const boost::filesystem::path &path);
 };

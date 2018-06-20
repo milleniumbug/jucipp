@@ -133,9 +133,6 @@ namespace Usages {
     static PathSet find_paths(const boost::filesystem::path &project_path,
                               const boost::filesystem::path &build_path, const boost::filesystem::path &debug_path);
 
-    static bool is_header(const boost::filesystem::path &path);
-    static bool is_source(const boost::filesystem::path &path);
-
     static std::pair<std::map<boost::filesystem::path, PathSet>, PathSet> parse_paths(const std::string &spelling, const PathSet &paths);
 
     /// Recursively find and return all the include paths of path

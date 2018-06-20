@@ -97,7 +97,8 @@ std::vector<std::string> CompileCommands::get_arguments(const boost::filesystem:
             ignore_next=false;
             continue;
           }
-          else if(cmd_arguments[c]=="-o" || cmd_arguments[c]=="-c") {
+          else if(cmd_arguments[c]=="-o" || cmd_arguments[c]=="-c" ||
+                  cmd_arguments[c]=="-x") { // Remove language arguments since some tools add languages not understood by clang
             ignore_next=true;
             continue;
           }
@@ -132,28 +133,30 @@ std::vector<std::string> CompileCommands::get_arguments(const boost::filesystem:
   arguments.emplace_back("-fretain-comments-from-system-headers");
   
   auto extension=file_path.extension().string();
-  if(extension==".h" ||  //TODO: temporary fix for .h-files (parse as c++)
-     extension!=".c")
-    arguments.emplace_back("-xc++");
+  bool is_header=CompileCommands::is_header(file_path) || extension.empty(); // Include std C++ headers that are without extensions
   
-  if(extension.empty() || (1<extension.size() && extension[1]=='h') || extension==".tcc" || extension==".cuh") {
+  if(is_header) {
     arguments.emplace_back("-Wno-pragma-once-outside-header");
     arguments.emplace_back("-Wno-pragma-system-header-outside-header");
     arguments.emplace_back("-Wno-include-next-outside-header");
   }
   
   if(extension==".cu" || extension==".cuh") {
+    arguments.emplace_back("-xcuda");
+    arguments.emplace_back("-D__CUDACC__");
     arguments.emplace_back("-include");
     arguments.emplace_back("cuda_runtime.h");
+    arguments.emplace_back("-ferror-limit=1000"); // CUDA headers redeclares some std functions
   }
-  
-  if(extension==".cl") {
+  else if(extension==".cl") {
     arguments.emplace_back("-xcl");
     arguments.emplace_back("-cl-std=CL2.0");
     arguments.emplace_back("-Xclang");
     arguments.emplace_back("-finclude-default-header");
     arguments.emplace_back("-Wno-gcc-compat");
   }
+  else if(is_header)
+    arguments.emplace_back("-xc++");
   
   if(!build_path.empty()) {
     arguments.emplace_back("-working-directory");
@@ -161,4 +164,25 @@ std::vector<std::string> CompileCommands::get_arguments(const boost::filesystem:
   }
 
   return arguments;
+}
+
+bool CompileCommands::is_header(const boost::filesystem::path &path) {
+  auto ext = path.extension();
+  if(ext == ".h" || // c headers
+     ext == ".hh" || ext == ".hp" || ext == ".hpp" || ext == ".h++" || ext == ".tcc" || // c++ headers
+     ext == ".cuh") // CUDA headers
+    return true;
+  else
+    return false;
+}
+
+bool CompileCommands::is_source(const boost::filesystem::path &path) {
+  auto ext = path.extension();
+  if(ext == ".c" || // c sources
+     ext == ".cpp" || ext == ".cxx" || ext == ".cc" || ext == ".C" || ext == ".c++" || // c++ sources
+     ext == ".cu" || // CUDA sources
+     ext == ".cl") // OpenCL sources
+    return true;
+  else
+    return false;
 }

@@ -532,9 +532,9 @@ Usages::Clang::PathSet Usages::Clang::find_paths(const boost::filesystem::path &
       continue;
     }
 
-    if(is_header(path))
+    if(CompileCommands::is_header(path))
       paths.emplace(path);
-    else if(is_source(path)) {
+    else if(CompileCommands::is_source(path)) {
       for(auto &command : compile_commands.commands) {
         if(filesystem::get_normal_path(command.file) == path) {
           paths.emplace(path);
@@ -545,27 +545,6 @@ Usages::Clang::PathSet Usages::Clang::find_paths(const boost::filesystem::path &
   }
 
   return paths;
-}
-
-bool Usages::Clang::is_header(const boost::filesystem::path &path) {
-  auto ext = path.extension();
-  if(ext == ".h" || // c headers
-     ext == ".hh" || ext == ".hp" || ext == ".hpp" || ext == ".h++" || ext == ".tcc" || // c++ headers
-     ext == ".cuh") // CUDA headers
-    return true;
-  else
-    return false;
-}
-
-bool Usages::Clang::is_source(const boost::filesystem::path &path) {
-  auto ext = path.extension();
-  if(ext == ".c" || // c sources
-     ext == ".cpp" || ext == ".cxx" || ext == ".cc" || ext == ".C" || ext == ".c++" || // c++ sources
-     ext == ".cu" || // CUDA sources
-     ext == ".cl") // OpenCL sources
-    return true;
-  else
-    return false;
 }
 
 std::pair<std::map<boost::filesystem::path, Usages::Clang::PathSet>, Usages::Clang::PathSet> Usages::Clang::parse_paths(const std::string &spelling, const PathSet &paths) {
