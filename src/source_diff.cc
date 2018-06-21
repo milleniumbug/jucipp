@@ -23,12 +23,12 @@ void Source::DiffView::Renderer::draw_vfunc(const Cairo::RefPtr<Cairo::Context> 
     cr->fill();
   }
   if(start.has_tag(tag_removed_below) || end.has_tag(tag_removed_below)) {
-    cr->set_source_rgba(0.75, 0.0, 0.0, 0.5);
+    cr->set_source_rgba(1.0, 0.0, 0.0, 0.5);
     cr->rectangle(cell_area.get_x()-4, cell_area.get_y()+cell_area.get_height()-2, 8, 2);
     cr->fill();
   }
   if(start.has_tag(tag_removed_above) || end.has_tag(tag_removed_above)) {
-    cr->set_source_rgba(0.75, 0.0, 0.0, 0.5);
+    cr->set_source_rgba(1.0, 0.0, 0.0, 0.5);
     cr->rectangle(cell_area.get_x()-4, cell_area.get_y(), 8, 2);
     cr->fill();
   }
