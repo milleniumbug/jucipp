@@ -318,6 +318,13 @@ int main() {
       g_assert(view.get_buffer()->get_insert()->get_iter() == view.get_buffer()->end());
     }
     {
+      view.get_buffer()->set_text("  else if constexpr(true)");
+      view.on_key_press_event(&event);
+      g_assert(view.get_buffer()->get_text() == "  else if constexpr(true)\n"
+                                                "    ");
+      g_assert(view.get_buffer()->get_insert()->get_iter() == view.get_buffer()->end());
+    }
+    {
       view.get_buffer()->set_text("  } else if(true)//comment");
       while(Gtk::Main::events_pending())
         Gtk::Main::iteration(false);
@@ -382,6 +389,15 @@ int main() {
                                   "     false)");
       view.on_key_press_event(&event);
       g_assert(view.get_buffer()->get_text() == "  if(true &&\n"
+                                                "     false)\n"
+                                                "    ");
+      g_assert(view.get_buffer()->get_insert()->get_iter() == view.get_buffer()->end());
+    }
+    {
+      view.get_buffer()->set_text("  if constexpr(true &&\n"
+                                  "     false)");
+      view.on_key_press_event(&event);
+      g_assert(view.get_buffer()->get_text() == "  if constexpr(true &&\n"
                                                 "     false)\n"
                                                 "    ");
       g_assert(view.get_buffer()->get_insert()->get_iter() == view.get_buffer()->end());

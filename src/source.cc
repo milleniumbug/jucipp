@@ -1827,8 +1827,8 @@ bool Source::View::on_key_press_event_basic(GdkEventKey* key) {
 
 //Bracket language indentation
 bool Source::View::on_key_press_event_bracket_language(GdkEventKey* key) {
-  const static std::regex no_bracket_statement_regex("^ *(if|for|while) *\\(.*[^;}{] *$|"
-                                                     "^[}]? *else if *\\(.*[^;}{] *$|"
+  const static std::regex no_bracket_statement_regex("^ *(if( +constexpr)?|for|while) *\\(.*[^;}{] *$|"
+                                                     "^[}]? *else if( +constexpr)? *\\(.*[^;}{] *$|"
                                                      "^[}]? *else *$", std::regex::extended);
 
   auto iter=get_buffer()->get_insert()->get_iter();
