@@ -44,7 +44,6 @@ See [language-server-protocol/specification.md](https://github.com/Microsoft/lan
 * Auto-indentation through [clang-format](http://clang.llvm.org/docs/ClangFormat.html) or [Prettier](https://github.com/prettier/prettier) if installed
 * Source minimap
 * Split view
-* Multiple cursors
 * Full UTF-8 support
 * Wayland supported with GTK+ 3.20 or newer
 
