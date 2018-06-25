@@ -439,6 +439,13 @@ void Source::View::configure() {
   property_show_line_numbers() = Config::get().source.show_line_numbers;
   if(Config::get().source.font.size()>0)
     override_font(Pango::FontDescription(Config::get().source.font));
+  
+#if GTKMM_MAJOR_VERSION>3 || (GTKMM_MAJOR_VERSION==3 && GTKMM_MINOR_VERSION>=20)
+  Gdk::Rectangle rectangle;
+  get_iter_location(get_buffer()->begin(), rectangle);
+  set_bottom_margin((rectangle.get_height()+get_pixels_above_lines()+get_pixels_below_lines())*10);
+#endif
+  
   if(Config::get().source.show_background_pattern)
     gtk_source_view_set_background_pattern(this->gobj(), GTK_SOURCE_BACKGROUND_PATTERN_TYPE_GRID);
   else
