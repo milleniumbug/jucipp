@@ -2725,7 +2725,7 @@ bool Source::View::on_motion_notify_event(GdkEventMotion *event) {
   // Workaround for drag-and-drop crash on MacOS
   // TODO 2018: check if this bug has been fixed
 #ifdef __APPLE__
-  if((event->state & GDK_BUTTON1_MASK) == 0)
+  if((event->state & GDK_BUTTON1_MASK) == 0 || (event->state&GDK_SHIFT_MASK)>0)
     return Gsv::View::on_motion_notify_event(event);
   else {
     int x, y;
