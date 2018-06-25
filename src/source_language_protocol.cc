@@ -21,7 +21,7 @@ LanguageProtocol::Client::Client(std::string root_uri_, std::string language_id_
     parse_server_message();
   }, [](const char *bytes, size_t n) {
     std::cerr.write(bytes, n);
-  }, true);
+  }, true, 1048576);
 }
 
 std::shared_ptr<LanguageProtocol::Client> LanguageProtocol::Client::get(const boost::filesystem::path &file_path, const std::string &language_id) {
