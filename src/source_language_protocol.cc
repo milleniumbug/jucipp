@@ -135,7 +135,7 @@ void LanguageProtocol::Client::close(Source::LanguageProtocolView *view) {
 void LanguageProtocol::Client::parse_server_message() {
   if(!header_read) {
     server_message_size=static_cast<size_t>(-1);
-    auto header_pos=server_message_stream.tellg();
+    server_message_stream.seekg(0, std::ios::beg);
     
     std::string line;
     while(!header_read && std::getline(server_message_stream, line)) {
@@ -155,9 +155,6 @@ void LanguageProtocol::Client::parse_server_message() {
         header_read=true;
       }
     }
-    
-    if(!header_read)
-      server_message_stream.seekg(header_pos, std::ios::beg); // Could not read header, start again at next output
   }
   
   if(header_read) {
