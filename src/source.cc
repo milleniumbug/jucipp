@@ -13,6 +13,7 @@
 #include <boost/spirit/home/qi/operator.hpp>
 #include <boost/spirit/home/qi/string.hpp>
 #include <iostream>
+#include <map>
 #include <numeric>
 #include <set>
 #include <regex>
@@ -111,8 +112,8 @@ std::string Source::FixIt::string(const Glib::RefPtr<Gtk::TextBuffer> &buffer) {
 //////////////
 //// View ////
 //////////////
-std::unordered_set<Source::View*> Source::View::non_deleted_views;
-std::unordered_set<Source::View*> Source::View::views;
+std::set<Source::View*> Source::View::non_deleted_views;
+std::set<Source::View*> Source::View::views;
 
 Source::View::View(const boost::filesystem::path &file_path, const Glib::RefPtr<Gsv::Language> &language, bool is_generic_view): BaseView(file_path, language), SpellCheckView(file_path, language), DiffView(file_path, language), parsed(true) {
   non_deleted_views.emplace(this);
@@ -2740,8 +2741,8 @@ bool Source::View::on_motion_notify_event(GdkEventMotion *event) {
 }
 
 std::pair<char, unsigned> Source::View::find_tab_char_and_size() {
-  std::unordered_map<char, size_t> tab_chars;
-  std::unordered_map<unsigned, size_t> tab_sizes;
+  std::map<char, size_t> tab_chars;
+  std::map<unsigned, size_t> tab_sizes;
   auto iter=get_buffer()->begin();
   long tab_count=-1;
   long last_tab_count=0;

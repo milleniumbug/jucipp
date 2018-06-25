@@ -6,8 +6,8 @@
 #include <list>
 #include <mutex>
 #include <sstream>
-#include <unordered_map>
-#include <unordered_set>
+#include <map>
+#include <set>
 
 namespace Source {
   class LanguageProtocolView;
@@ -46,7 +46,7 @@ namespace LanguageProtocol {
 
     Capabilities capabilities;
 
-    std::unordered_set<Source::LanguageProtocolView *> views;
+    std::set<Source::LanguageProtocolView *> views;
     std::mutex views_mutex;
     
     std::mutex initialize_mutex;
@@ -61,7 +61,7 @@ namespace LanguageProtocol {
 
     size_t message_id = 1;
 
-    std::unordered_map<size_t, std::pair<Source::LanguageProtocolView*, std::function<void(const boost::property_tree::ptree &, bool error)>>> handlers;
+    std::map<size_t, std::pair<Source::LanguageProtocolView*, std::function<void(const boost::property_tree::ptree &, bool error)>>> handlers;
     std::vector<std::thread> timeout_threads;
     std::mutex timeout_threads_mutex;
 

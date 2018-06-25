@@ -7,6 +7,7 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include <set>
 #include <tuple>
 
 namespace Source {
@@ -50,8 +51,8 @@ namespace Source {
 
   class View : public SpellCheckView, public DiffView {
   public:
-    static std::unordered_set<View*> non_deleted_views;
-    static std::unordered_set<View*> views;
+    static std::set<View*> non_deleted_views;
+    static std::set<View*> views;
     
     View(const boost::filesystem::path &file_path, const Glib::RefPtr<Gsv::Language> &language, bool is_generic_view=false);
     ~View() override;

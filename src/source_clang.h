@@ -1,6 +1,7 @@
 #pragma once
 #include <thread>
 #include <atomic>
+#include <map>
 #include <mutex>
 #include <set>
 #include "clangmm.h"
@@ -43,7 +44,7 @@ namespace Source {
   private:
     Glib::ustring parse_thread_buffer;
     
-    static const std::unordered_map<int, std::string> &clang_types();
+    static const std::map<int, std::string> &clang_types();
     void update_syntax();
     std::map<int, Glib::RefPtr<Gtk::TextTag>> syntax_tags;
 

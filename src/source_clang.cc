@@ -216,8 +216,8 @@ void Source::ClangViewParse::soft_reparse(bool delayed) {
   }, delayed?1000:0);
 }
 
-const std::unordered_map<int, std::string> &Source::ClangViewParse::clang_types() {
-  static std::unordered_map<int, std::string> types{
+const std::map<int, std::string> &Source::ClangViewParse::clang_types() {
+  static std::map<int, std::string> types{
       {8, "def:function"},
       {21, "def:function"},
       {22, "def:identifier"},

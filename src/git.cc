@@ -1,5 +1,6 @@
 #include "git.h"
 #include <cstring>
+#include <unordered_map>
 
 bool Git::initialized=false;
 std::mutex Git::mutex;
