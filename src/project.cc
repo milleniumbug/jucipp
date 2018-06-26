@@ -922,6 +922,9 @@ void Project::Markdown::compile_and_run() {
 }
 
 void Project::Python::compile_and_run() {
+  if(Config::get().project.clear_terminal_on_compile)
+    Terminal::get().clear();
+  
   auto command=Config::get().project.python_command+' '+filesystem::escape_argument(filesystem::get_short_path(Notebook::get().get_current_view()->file_path).string());
   Terminal::get().print("Running "+command+"\n");
   Terminal::get().async_process(command, Notebook::get().get_current_view()->file_path.parent_path(), [command](int exit_status) {
@@ -945,6 +948,10 @@ void Project::JavaScript::compile_and_run() {
     command="node --harmony "+filesystem::escape_argument(filesystem::get_short_path(view->file_path).string());
     path=view->file_path.parent_path();
   }
+  
+  if(Config::get().project.clear_terminal_on_compile)
+    Terminal::get().clear();
+  
   Terminal::get().print("Running "+command+"\n");
   Terminal::get().async_process(command, path, [command](int exit_status) {
     Terminal::get().async_print(command+" returned: "+std::to_string(exit_status)+'\n');
