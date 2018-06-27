@@ -596,7 +596,7 @@ Source::ClangViewAutocomplete::ClangViewAutocomplete(const boost::filesystem::pa
   };
   
   autocomplete.on_add_rows_error=[this] {
-    Terminal::get().print("Error: autocomplete failed, reparsing "+this->file_path.string()+"\n", true);
+    Terminal::get().print("Error: autocomplete failed, reparsing "+this->file_path.string()+'\n', true);
     selected_completion_string=nullptr;
     code_complete_results=nullptr;
     full_reparse();

@@ -414,7 +414,7 @@ bool Source::View::save() {
     return true;
   }
   else {
-    Terminal::get().print("Error: could not save file "+file_path.string()+"\n", true);
+    Terminal::get().print("Error: could not save file "+file_path.string()+'\n', true);
     return false;
   }
 }
@@ -1652,13 +1652,13 @@ bool Source::View::on_key_press_event_basic(GdkEventKey* key) {
       if(iter.ends_line() && (line_nr+1)<get_buffer()->get_line_count()) {
         auto next_line_tabs=get_line_before(get_tabs_end_iter(line_nr+1));
         if(next_line_tabs.size()>tabs.size()) {
-          get_buffer()->insert_at_cursor("\n"+next_line_tabs);
+          get_buffer()->insert_at_cursor('\n'+next_line_tabs);
           scroll_to(get_buffer()->get_insert());
           return true;
         }
       }
     }
-    get_buffer()->insert_at_cursor("\n"+tabs);
+    get_buffer()->insert_at_cursor('\n'+tabs);
     scroll_to(get_buffer()->get_insert());
     return true;
   }
@@ -1861,7 +1861,7 @@ bool Source::View::on_key_press_event_bracket_language(GdkEventKey* key) {
         if(!start_of_sentence.empty()) {
           if(start_of_sentence=="/*" || start_of_sentence[0]=='*') {
             auto tabs=get_line_before(start_iter);
-            auto insert_str="\n"+tabs;
+            auto insert_str='\n'+tabs;
             if(start_of_sentence[0]=='/')
               insert_str+=' ';
             insert_str+="* ";
@@ -1923,7 +1923,7 @@ bool Source::View::on_key_press_event_bracket_language(GdkEventKey* key) {
       auto line=get_buffer()->get_text(start_iter, end_of_line_iter);
       if(!line.empty() && line.compare(0, 2, "*/")==0) {
         tabs.pop_back();
-        get_buffer()->insert_at_cursor("\n"+tabs);
+        get_buffer()->insert_at_cursor('\n'+tabs);
         scroll_to(get_buffer()->get_insert());
         return true;
       }
@@ -1945,7 +1945,7 @@ bool Source::View::on_key_press_event_bracket_language(GdkEventKey* key) {
         has_right_curly_bracket=symbol_count(iter, '{', '}')!=1;
       
       if(*get_buffer()->get_insert()->get_iter()=='}') {
-        get_buffer()->insert_at_cursor("\n"+tabs+tab+"\n"+tabs);
+        get_buffer()->insert_at_cursor('\n'+tabs+tab+'\n'+tabs);
         auto insert_it = get_buffer()->get_insert()->get_iter();
         if(insert_it.backward_chars(tabs.size()+1)) {
           scroll_to(get_buffer()->get_insert());
@@ -2005,7 +2005,7 @@ bool Source::View::on_key_press_event_bracket_language(GdkEventKey* key) {
             }
           }
         }
-        get_buffer()->insert_at_cursor("\n"+tabs+tab+"\n"+tabs+(add_semicolon?"};":"}"));
+        get_buffer()->insert_at_cursor('\n'+tabs+tab+'\n'+tabs+(add_semicolon?"};":"}"));
         auto insert_it = get_buffer()->get_insert()->get_iter();
         if(insert_it.backward_chars(tabs.size()+(add_semicolon?3:2))) {
           scroll_to(get_buffer()->get_insert());
@@ -2014,7 +2014,7 @@ bool Source::View::on_key_press_event_bracket_language(GdkEventKey* key) {
         return true;
       }
       else {
-        get_buffer()->insert_at_cursor("\n"+tabs+tab);
+        get_buffer()->insert_at_cursor('\n'+tabs+tab);
         scroll_to(get_buffer()->get_insert());
         return true;
       }
@@ -2043,7 +2043,7 @@ bool Source::View::on_key_press_event_bracket_language(GdkEventKey* key) {
         }
         
         if(*get_buffer()->get_insert()->get_iter()==close_symbol) {
-          get_buffer()->insert_at_cursor("\n"+tabs+tab+"\n"+tabs);
+          get_buffer()->insert_at_cursor('\n'+tabs+tab+'\n'+tabs);
           auto insert_it = get_buffer()->get_insert()->get_iter();
           if(insert_it.backward_chars(tabs.size()+1)) {
             scroll_to(get_buffer()->get_insert());
@@ -2053,7 +2053,7 @@ bool Source::View::on_key_press_event_bracket_language(GdkEventKey* key) {
         }
         else if(!has_right_bracket) {
           //Insert new lines with bracket end
-          get_buffer()->insert_at_cursor("\n"+tabs+tab+"\n"+tabs+static_cast<char>(close_symbol));
+          get_buffer()->insert_at_cursor('\n'+tabs+tab+'\n'+tabs+static_cast<char>(close_symbol));
           auto insert_it = get_buffer()->get_insert()->get_iter();
           if(insert_it.backward_chars(tabs.size()+2)) {
             scroll_to(get_buffer()->get_insert());
@@ -2062,7 +2062,7 @@ bool Source::View::on_key_press_event_bracket_language(GdkEventKey* key) {
           return true;
         }
         else {
-          get_buffer()->insert_at_cursor("\n"+tabs+tab);
+          get_buffer()->insert_at_cursor('\n'+tabs+tab);
           scroll_to(get_buffer()->get_insert());
           return true;
         }
@@ -2075,7 +2075,7 @@ bool Source::View::on_key_press_event_bracket_language(GdkEventKey* key) {
       if(open_non_curly_bracket_iter_found && (*open_non_curly_bracket_iter=='[' || *open_non_curly_bracket_iter=='(')) {
         // If next line should have an extra tab:
         if(condition_iter.get_line()==open_non_curly_bracket_iter.get_line()) {
-          get_buffer()->insert_at_cursor("\n"+tabs+tab);
+          get_buffer()->insert_at_cursor('\n'+tabs+tab);
           scroll_to(get_buffer()->get_insert());
           return true;
         }
@@ -2088,12 +2088,12 @@ bool Source::View::on_key_press_event_bracket_language(GdkEventKey* key) {
           if(iter.ends_line() && (line_nr+1)<get_buffer()->get_line_count()) {
             auto next_line_tabs=get_line_before(get_tabs_end_iter(line_nr+1));
             if(next_line_tabs.size()>tabs.size()) {
-              get_buffer()->insert_at_cursor("\n"+next_line_tabs);
+              get_buffer()->insert_at_cursor('\n'+next_line_tabs);
               scroll_to(get_buffer()->get_insert());
               return true;
             }
           }
-          get_buffer()->insert_at_cursor("\n"+tabs);
+          get_buffer()->insert_at_cursor('\n'+tabs);
           scroll_to(get_buffer()->get_insert());
           return true;
         }
@@ -2108,7 +2108,7 @@ bool Source::View::on_key_press_event_bracket_language(GdkEventKey* key) {
         tabs+=' ';
         iter.forward_char();
       }
-      get_buffer()->insert_at_cursor("\n"+tabs);
+      get_buffer()->insert_at_cursor('\n'+tabs);
       scroll_to(get_buffer()->get_insert());
       return true;
     }
@@ -2119,7 +2119,7 @@ bool Source::View::on_key_press_event_bracket_language(GdkEventKey* key) {
     std::smatch sm;
     // Indenting after for instance: if(...)\n
     if(std::regex_match(sentence, sm, no_bracket_statement_regex)) {
-      get_buffer()->insert_at_cursor("\n"+tabs+tab);
+      get_buffer()->insert_at_cursor('\n'+tabs+tab);
       scroll_to(get_buffer()->get_insert());
       return true;
     }
@@ -2135,7 +2135,7 @@ bool Source::View::on_key_press_event_bracket_language(GdkEventKey* key) {
       std::string previous_sentence=get_buffer()->get_text(previous_start_iter, after_condition_iter);
       std::smatch sm2;
       if(std::regex_match(previous_sentence, sm2, no_bracket_statement_regex)) {
-        get_buffer()->insert_at_cursor("\n"+previous_tabs);
+        get_buffer()->insert_at_cursor('\n'+previous_tabs);
         scroll_to(get_buffer()->get_insert());
         return true;
       }
@@ -2163,14 +2163,14 @@ bool Source::View::on_key_press_event_bracket_language(GdkEventKey* key) {
             get_buffer()->erase(start_line_iter, start_line_plus_tab_size);
           }
           else {
-            get_buffer()->insert_at_cursor("\n"+tabs+tab);
+            get_buffer()->insert_at_cursor('\n'+tabs+tab);
             scroll_to(get_buffer()->get_insert());
             return true;
           }
         }
       }
     }
-    get_buffer()->insert_at_cursor("\n"+tabs);
+    get_buffer()->insert_at_cursor('\n'+tabs);
     scroll_to(get_buffer()->get_insert());
     return true;
   }
