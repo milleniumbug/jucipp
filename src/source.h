@@ -117,7 +117,7 @@ namespace Source {
     Gtk::TextIter find_start_of_sentence(Gtk::TextIter iter);
     bool find_open_non_curly_bracket_backward(Gtk::TextIter iter, Gtk::TextIter &found_iter);
     bool find_open_curly_bracket_backward(Gtk::TextIter iter, Gtk::TextIter &found_iter);
-    bool find_close_curly_bracket_forward(Gtk::TextIter iter, Gtk::TextIter &found_iter);
+    bool find_close_symbol_forward(Gtk::TextIter iter, Gtk::TextIter &found_iter, unsigned int positive_char, unsigned int negative_char);
     long symbol_count(Gtk::TextIter iter, unsigned int positive_char, unsigned int negative_char);
     bool is_templated_function(Gtk::TextIter iter, Gtk::TextIter &parenthesis_end_iter);
     

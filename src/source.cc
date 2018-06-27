@@ -1270,8 +1270,11 @@ Gtk::TextIter Source::View::find_start_of_sentence(Gtk::TextIter iter) {
       square_count--;
     else if(*iter=='{' && is_code_iter(iter))
       curly_count++;
-    else if(*iter=='}' && is_code_iter(iter))
+    else if(*iter=='}' && is_code_iter(iter)) {
       curly_count--;
+      if(iter.starts_line())
+        break;
+    }
     
     if(curly_count>0)
       break;
@@ -1334,18 +1337,18 @@ bool Source::View::find_open_curly_bracket_backward(Gtk::TextIter iter, Gtk::Tex
   return false;
 }
 
-bool Source::View::find_close_curly_bracket_forward(Gtk::TextIter iter, Gtk::TextIter &found_iter) {
+bool Source::View::find_close_symbol_forward(Gtk::TextIter iter, Gtk::TextIter &found_iter, unsigned int positive_char, unsigned int negative_char) {
   long count=0;
   
   do {
-    if(*iter=='}' && is_code_iter(iter)) {
+    if(*iter==negative_char && is_code_iter(iter)) {
       if(count==0) {
         found_iter=iter;
         return true;
       }
       count--;
     }
-    else if(*iter=='{' && is_code_iter(iter))
+    else if(*iter==positive_char && is_code_iter(iter))
       count++;
   } while(iter.forward_char());
   return false;
@@ -1875,7 +1878,7 @@ bool Source::View::on_key_press_event_bracket_language(GdkEventKey* key) {
       return false;
   }
   
-  // get iter for if expressions below, which is moved backwards past any comment
+  // Get iter for if expressions below, which is moved backwards past any comment
   auto get_condition_iter=[this](const Gtk::TextIter &iter) {
     auto condition_iter=iter;
     condition_iter.backward_char();
@@ -1892,7 +1895,7 @@ bool Source::View::on_key_press_event_bracket_language(GdkEventKey* key) {
     return condition_iter;
   };
   
-  //Indent depending on if/else/etc and brackets
+  // Indent depending on if/else/etc and brackets
   if((key->keyval==GDK_KEY_Return || key->keyval==GDK_KEY_KP_Enter) && !iter.starts_line()) {
     cleanup_whitespace_characters_on_return(iter);
     iter=get_buffer()->get_insert()->get_iter();
@@ -1930,14 +1933,14 @@ bool Source::View::on_key_press_event_bracket_language(GdkEventKey* key) {
       Gtk::TextIter found_iter;
       // Check if an '}' is needed
       bool has_right_curly_bracket=false;
-      bool found_right_bracket=find_close_curly_bracket_forward(iter, found_iter);
+      bool found_right_bracket=find_close_symbol_forward(iter, found_iter, '{', '}');
       if(found_right_bracket) {
         auto tabs_end_iter=get_tabs_end_iter(found_iter);
         auto line_tabs=get_line_before(tabs_end_iter);
         if(tabs.size()==line_tabs.size())
           has_right_curly_bracket=true;
       }
-      // special case for functions and classes with no indentation after: namespace {
+      // Special case for functions and classes with no indentation after: namespace {
       if(tabs.empty() && has_right_curly_bracket)
         has_right_curly_bracket=symbol_count(iter, '{', '}')!=1;
       
@@ -2016,12 +2019,76 @@ bool Source::View::on_key_press_event_bracket_language(GdkEventKey* key) {
         return true;
       }
     }
+    // Special indentation of [ and ( for JavaScript and JSON
+    if(language && (language->get_id()=="js" || language->get_id()=="json")) {
+      unsigned int open_symbol=0, close_symbol=0;
+      if(*condition_iter=='[') {
+        open_symbol='[';
+        close_symbol=']';
+      }
+      else if(*condition_iter=='(') {
+        open_symbol='(';
+        close_symbol=')';
+      }
+      if(open_symbol!=0 && is_code_iter(condition_iter)) {
+        Gtk::TextIter found_iter;
+        // Check if an ']' is needed
+        bool has_right_bracket=false;
+        bool found_right_bracket=find_close_symbol_forward(iter, found_iter, open_symbol, close_symbol);
+        if(found_right_bracket) {
+          auto tabs_end_iter=get_tabs_end_iter(found_iter);
+          auto line_tabs=get_line_before(tabs_end_iter);
+          if(tabs.size()==line_tabs.size())
+            has_right_bracket=true;
+        }
+        
+        if(*get_buffer()->get_insert()->get_iter()==close_symbol) {
+          get_buffer()->insert_at_cursor("\n"+tabs+tab+"\n"+tabs);
+          auto insert_it = get_buffer()->get_insert()->get_iter();
+          if(insert_it.backward_chars(tabs.size()+1)) {
+            scroll_to(get_buffer()->get_insert());
+            get_buffer()->place_cursor(insert_it);
+          }
+          return true;
+        }
+        else if(!has_right_bracket) {
+          //Insert new lines with bracket end
+          get_buffer()->insert_at_cursor("\n"+tabs+tab+"\n"+tabs+static_cast<char>(close_symbol));
+          auto insert_it = get_buffer()->get_insert()->get_iter();
+          if(insert_it.backward_chars(tabs.size()+2)) {
+            scroll_to(get_buffer()->get_insert());
+            get_buffer()->place_cursor(insert_it);
+          }
+          return true;
+        }
+        else {
+          get_buffer()->insert_at_cursor("\n"+tabs+tab);
+          scroll_to(get_buffer()->get_insert());
+          return true;
+        }
+      }
+      
+      // JavaScript: simplified indentations inside brackets, after for example:
+      // [\n  1, 2, 3,\n
+      // return (\n
+      // ReactDOM.render(\n  <div>\n
+      if(open_non_curly_bracket_iter_found && (*open_non_curly_bracket_iter=='[' || *open_non_curly_bracket_iter=='(')) {
+        if(condition_iter.get_line()==open_non_curly_bracket_iter.get_line())
+          tabs=get_line_before(start_iter)+tab;
+        else {
+          start_iter=get_tabs_end_iter(get_buffer()->get_iter_at_line(condition_iter.get_line()));
+          tabs=get_line_before(start_iter);
+        }
+        get_buffer()->insert_at_cursor("\n"+tabs);
+        scroll_to(get_buffer()->get_insert());
+        return true;
+      }
+    }
     
-    //Indent multiline expressions
+    // Indent multiline expressions
     if(open_non_curly_bracket_iter_found) {
-      auto tabs_end_iter=get_tabs_end_iter(open_non_curly_bracket_iter);
-      auto tabs=get_line_before(get_tabs_end_iter(open_non_curly_bracket_iter));
-      auto iter=tabs_end_iter;
+      auto iter=get_tabs_end_iter(open_non_curly_bracket_iter);
+      auto tabs=get_line_before(iter);
       while(iter<=open_non_curly_bracket_iter) {
         tabs+=' ';
         iter.forward_char();
@@ -2030,16 +2097,18 @@ bool Source::View::on_key_press_event_bracket_language(GdkEventKey* key) {
       scroll_to(get_buffer()->get_insert());
       return true;
     }
+    
     auto after_condition_iter=condition_iter;
     after_condition_iter.forward_char();
     std::string sentence=get_buffer()->get_text(start_iter, after_condition_iter);
     std::smatch sm;
+    // Indenting after for instance: if(...)\n
     if(std::regex_match(sentence, sm, no_bracket_statement_regex)) {
       get_buffer()->insert_at_cursor("\n"+tabs+tab);
       scroll_to(get_buffer()->get_insert());
       return true;
     }
-    //Indenting after for instance if(...)\n...;\n
+    // Indenting after for instance: if(...)\n...;\n
     else if(*condition_iter==';' && condition_iter.get_line()>0 && is_code_iter(condition_iter)) {
       auto previous_end_iter=start_iter;
       while(previous_end_iter.backward_char() && !previous_end_iter.ends_line()) {}
@@ -2056,7 +2125,7 @@ bool Source::View::on_key_press_event_bracket_language(GdkEventKey* key) {
         return true;
       }
     }
-    //Indenting after ':'
+    // Indenting after ':'
     else if(*condition_iter==':' && is_code_iter(condition_iter)) {
       bool perform_indent=true;
       auto iter=condition_iter;
@@ -2090,7 +2159,7 @@ bool Source::View::on_key_press_event_bracket_language(GdkEventKey* key) {
     scroll_to(get_buffer()->get_insert());
     return true;
   }
-  //Indent left when writing } on a new line
+  // Indent left when writing } on a new line
   else if(key->keyval==GDK_KEY_braceright) {
     std::string line=get_line_before();
     if(line.size()>=tab_size && iter.ends_line()) {
@@ -2112,7 +2181,7 @@ bool Source::View::on_key_press_event_bracket_language(GdkEventKey* key) {
       }
     }
   }
-  //Indent left when writing { on a new line after for instance if(...)\n...
+  // Indent left when writing { on a new line after for instance if(...)\n...
   else if(key->keyval==GDK_KEY_braceleft) {
     auto tabs_end_iter=get_tabs_end_iter();
     auto tabs=get_line_before(tabs_end_iter);
