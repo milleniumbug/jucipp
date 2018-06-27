@@ -2080,23 +2080,8 @@ bool Source::View::on_key_press_event_bracket_language(GdkEventKey* key) {
           return true;
         }
         // Indent as in current or next line:
-        else {
-          auto start_iter=get_tabs_end_iter(get_buffer()->get_iter_at_line(condition_iter.get_line()));
-          auto tabs=get_line_before(start_iter);
-          
-          int line_nr=iter.get_line();
-          if(iter.ends_line() && (line_nr+1)<get_buffer()->get_line_count()) {
-            auto next_line_tabs=get_line_before(get_tabs_end_iter(line_nr+1));
-            if(next_line_tabs.size()>tabs.size()) {
-              get_buffer()->insert_at_cursor('\n'+next_line_tabs);
-              scroll_to(get_buffer()->get_insert());
-              return true;
-            }
-          }
-          get_buffer()->insert_at_cursor('\n'+tabs);
-          scroll_to(get_buffer()->get_insert());
-          return true;
-        }
+        else
+          return false;
       }
     }
     
