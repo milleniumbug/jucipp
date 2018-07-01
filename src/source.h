@@ -113,9 +113,11 @@ namespace Source {
     gdouble on_motion_last_x=0.0;
     gdouble on_motion_last_y=0.0;
     
-    /// Usually returns at start of line, but not always
-    Gtk::TextIter find_start_of_sentence(Gtk::TextIter iter);
-    bool find_open_non_curly_bracket_backward(Gtk::TextIter iter, Gtk::TextIter &found_iter);
+    Gtk::TextIter find_non_whitespace_code_iter_backward(Gtk::TextIter iter);
+    /// If closing bracket is found, continues until the open bracket.
+    /// Returns if open bracket is found that has no corresponding closing bracket.
+    /// Else, return at start of line.
+    Gtk::TextIter get_start_of_expression(Gtk::TextIter iter);
     bool find_open_curly_bracket_backward(Gtk::TextIter iter, Gtk::TextIter &found_iter);
     bool find_close_symbol_forward(Gtk::TextIter iter, Gtk::TextIter &found_iter, unsigned int positive_char, unsigned int negative_char);
     long symbol_count(Gtk::TextIter iter, unsigned int positive_char, unsigned int negative_char);
@@ -125,7 +127,6 @@ namespace Source {
     
     void cleanup_whitespace_characters_on_return(const Gtk::TextIter &iter);
     
-    bool is_bracket_language=false;
     bool on_key_press_event(GdkEventKey* key) override;
     bool on_key_press_event_basic(GdkEventKey* key);
     bool on_key_press_event_bracket_language(GdkEventKey* key);
@@ -140,8 +141,6 @@ namespace Source {
     std::string tab;
     
     bool interactive_completion=true;
-    
-    guint previous_non_modifier_keyval=0;
   private:
     void setup_tooltip_and_dialog_events();
     void setup_format_style(bool is_generic_view);
@@ -154,6 +153,11 @@ namespace Source {
     static void search_occurrences_updated(GtkWidget* widget, GParamSpec* property, gpointer data);
     
     sigc::connection renderer_activate_connection;
+    
+    bool is_bracket_language=false;
+    bool is_cpp=false;
+    bool is_js_or_rust=false;
+    guint previous_non_modifier_keyval=0;
     
     bool multiple_cursors_signals_set=false;
     bool multiple_cursors_use=false;
