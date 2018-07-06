@@ -112,8 +112,73 @@ int main() {
       g_assert(buffer->get_text() == "{\n"
                                      "{\n"
                                      "  \n"
+                                     "}");
+      g_assert(buffer->get_insert()->get_iter().get_line() == 2);
+      g_assert(buffer->get_insert()->get_iter().get_line_offset() == 2);
+    }
+    {
+      buffer->set_text("{\n"
+                       "{\n"
+                       "}\n"
+                       "}");
+      auto iter = buffer->get_iter_at_line(1);
+      iter.forward_char();
+      buffer->place_cursor(iter);
+      view.on_key_press_event(&event);
+      g_assert(buffer->get_text() == "{\n"
+                                     "{\n"
+                                     "  \n"
                                      "}\n"
                                      "}");
+      g_assert(buffer->get_insert()->get_iter().get_line() == 2);
+      g_assert(buffer->get_insert()->get_iter().get_line_offset() == 2);
+    }
+    {
+      buffer->set_text("namespace test {\n"
+                       "{\n"
+                       "}");
+      auto iter = buffer->get_iter_at_line(1);
+      iter.forward_char();
+      buffer->place_cursor(iter);
+      view.on_key_press_event(&event);
+      g_assert(buffer->get_text() == "namespace test {\n"
+                                     "{\n"
+                                     "  \n"
+                                     "}\n"
+                                     "}");
+      g_assert(buffer->get_insert()->get_iter().get_line() == 2);
+      g_assert(buffer->get_insert()->get_iter().get_line_offset() == 2);
+    }
+    {
+      buffer->set_text("namespace test {\n"
+                       "{\n"
+                       "}\n");
+      auto iter = buffer->get_iter_at_line(1);
+      iter.forward_char();
+      buffer->place_cursor(iter);
+      view.on_key_press_event(&event);
+      g_assert(buffer->get_text() == "namespace test {\n"
+                                     "{\n"
+                                     "  \n"
+                                     "}\n"
+                                     "}\n");
+      g_assert(buffer->get_insert()->get_iter().get_line() == 2);
+      g_assert(buffer->get_insert()->get_iter().get_line_offset() == 2);
+    }
+    {
+      buffer->set_text("namespace test {\n"
+                       "{\n"
+                       "}\n"
+                       "}\n");
+      auto iter = buffer->get_iter_at_line(1);
+      iter.forward_char();
+      buffer->place_cursor(iter);
+      view.on_key_press_event(&event);
+      g_assert(buffer->get_text() == "namespace test {\n"
+                                     "{\n"
+                                     "  \n"
+                                     "}\n"
+                                     "}\n");
       g_assert(buffer->get_insert()->get_iter().get_line() == 2);
       g_assert(buffer->get_insert()->get_iter().get_line_offset() == 2);
     }
@@ -1196,14 +1261,30 @@ int main() {
       g_assert(buffer->get_insert()->get_iter() == iter);
     }
     {
-      buffer->set_text("{\n"
+      buffer->set_text("namespace test {\n"
                        "\n"
                        "}");
       auto iter = buffer->get_iter_at_line(1);
       buffer->place_cursor(iter);
       view.on_key_press_event(&event);
-      g_assert(buffer->get_text() == "{\n"
+      g_assert(buffer->get_text() == "namespace test {\n"
                                      "{}\n"
+                                     "}");
+      iter = buffer->get_iter_at_line(1);
+      iter.forward_char();
+      g_assert(buffer->get_insert()->get_iter() == iter);
+    }
+    {
+      buffer->set_text("namespace test {\n"
+                       "\n"
+                       "}\n"
+                       "}");
+      auto iter = buffer->get_iter_at_line(1);
+      buffer->place_cursor(iter);
+      view.on_key_press_event(&event);
+      g_assert(buffer->get_text() == "namespace test {\n"
+                                     "{\n"
+                                     "}\n"
                                      "}");
       iter = buffer->get_iter_at_line(1);
       iter.forward_char();
@@ -1533,6 +1614,24 @@ int main() {
       g_assert(buffer->get_text() == "  ]");
       iter = buffer->end();
       iter.backward_char();
+      g_assert(buffer->get_insert()->get_iter() == iter);
+    }
+    {
+      buffer->set_text("class C {\n"
+                       "  {}\n"
+                       "public:\n"
+                       "}\n");
+      auto iter = buffer->get_iter_at_line(1);
+      iter.forward_to_line_end();
+      iter.backward_char();
+      buffer->place_cursor(iter);
+      view.on_key_press_event(&event);
+      g_assert(buffer->get_text() == "class C {\n"
+                                     "  \n"
+                                     "public:\n"
+                                     "}\n");
+      iter = buffer->get_iter_at_line(1);
+      iter.forward_to_line_end();
       g_assert(buffer->get_insert()->get_iter() == iter);
     }
     Config::get().source.smart_inserts = false;
