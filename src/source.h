@@ -155,8 +155,8 @@ namespace Source {
     sigc::connection renderer_activate_connection;
     
     bool is_bracket_language=false;
+    bool use_fixed_continuation_indenting=true;
     bool is_cpp=false;
-    bool is_js_or_rust=false;
     guint previous_non_modifier_keyval=0;
     
     bool multiple_cursors_signals_set=false;

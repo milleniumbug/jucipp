@@ -180,10 +180,38 @@ Source::View::View(const boost::filesystem::path &file_path, const Glib::RefPtr<
 
   if(language) {
     auto language_id = language->get_id();
-    if(language_id == "chdr" || language_id == "cpphdr" || language_id == "c" || language_id == "cpp")
+    if(language_id == "chdr" || language_id == "cpphdr" || language_id == "c" || language_id == "cpp") {
       is_cpp = true;
-    else if(language_id == "js" || language_id == "json" || language_id == "rust")
-      is_js_or_rust = true;
+      use_fixed_continuation_indenting = false;
+      // TODO 2019: check if clang-format has improved...
+      // boost::filesystem::path clang_format_file;
+      // auto search_path=file_path.parent_path();
+      // boost::system::error_code ec;
+      // while(true) {
+      //   clang_format_file=search_path/".clang-format";
+      //   if(boost::filesystem::exists(clang_format_file, ec))
+      //     break;
+      //   clang_format_file=search_path/"_clang-format";
+      //   if(boost::filesystem::exists(clang_format_file, ec))
+      //     break;
+      //   clang_format_file.clear();
+        
+      //   if(search_path==search_path.root_directory())
+      //     break;
+      //   search_path=search_path.parent_path();
+      // }
+      // if(!clang_format_file.empty()) {
+      //   auto lines=filesystem::read_lines(clang_format_file);
+      //   for(auto &line: lines) {
+      //     std::cout << "1" << std::endl;
+      //     if(!line.empty() && line.compare(0, 23, "ContinuationIndentWidth")==0) {
+      //       std::cout << "2" << std::endl;
+      //       use_continuation_indenting=true;
+      //       break;
+      //     }
+      //   }
+      // }
+    }
 
     if(language_id == "chdr" || language_id == "cpphdr" || language_id == "c" ||
        language_id == "cpp" || language_id == "objc" || language_id == "java" ||
@@ -701,8 +729,9 @@ void Source::View::setup_format_style(bool is_generic_view) {
       
       bool use_style_file=false;
       auto style_file_search_path=this->file_path.parent_path();
+      boost::system::error_code ec;
       while(true) {
-        if(boost::filesystem::exists(style_file_search_path/".clang-format") || boost::filesystem::exists(style_file_search_path/"_clang-format")) {
+        if(boost::filesystem::exists(style_file_search_path/".clang-format", ec) || boost::filesystem::exists(style_file_search_path/"_clang-format", ec)) {
           use_style_file=true;
           break;
         }
@@ -1975,8 +2004,8 @@ bool Source::View::on_key_press_event_bracket_language(GdkEventKey* key) {
       }
     }
     
-    // Special indentation of [ and ( for JavaScript and JSON
-    if(is_js_or_rust) {
+    // Special indentation of {, [ and ( for for instance JavaScript, JSON, Rust
+    if(use_fixed_continuation_indenting) {
       unsigned int open_symbol=0, close_symbol=0;
       if(*condition_iter=='[') {
         open_symbol='[';
@@ -2060,7 +2089,7 @@ bool Source::View::on_key_press_event_bracket_language(GdkEventKey* key) {
           if(found_tabs_end_iter.get_line_offset()==tabs_end_iter.get_line_offset()) {
             has_right_curly_bracket=true;
             // Special case for functions and classes with no indentation after: namespace {
-            if(tabs_end_iter.starts_line()) {
+            if(is_cpp && tabs_end_iter.starts_line()) {
               auto iter=condition_iter;
               Gtk::TextIter open_iter;
               if(iter.backward_char() && find_open_curly_bracket_backward(iter, open_iter)) {
@@ -2236,15 +2265,15 @@ bool Source::View::on_key_press_event_bracket_language(GdkEventKey* key) {
         }
       }
     }
-    if(is_js_or_rust)
-      return false; // Use basic indentation since JavaScript code can contain JSX:
+    if(use_fixed_continuation_indenting)
+      return false; // Use basic indentation since for instance JavaScript code can contain JSX
     get_buffer()->insert_at_cursor('\n'+tabs);
     scroll_to(get_buffer()->get_insert());
     return true;
   }
   // Indent left when writing }, ) or ] on a new line
   else if(key->keyval==GDK_KEY_braceright ||
-          (is_js_or_rust && (key->keyval==GDK_KEY_bracketright || key->keyval==GDK_KEY_parenright))) {
+          (use_fixed_continuation_indenting && (key->keyval==GDK_KEY_bracketright || key->keyval==GDK_KEY_parenright))) {
     std::string bracket;
     if(key->keyval==GDK_KEY_braceright)
       bracket="}";
@@ -2562,7 +2591,7 @@ bool Source::View::on_key_press_event_smart_inserts(GdkEventKey *key) {
         if(found_tabs_end_iter.get_line_offset()==tabs_end_iter.get_line_offset()) {
           has_right_curly_bracket=true;
           // Special case for functions and classes with no indentation after: namespace {:
-          if(tabs_end_iter.starts_line()) {
+          if(is_cpp && tabs_end_iter.starts_line()) {
             Gtk::TextIter open_iter;
             if(find_open_curly_bracket_backward(iter, open_iter)) {
               if(open_iter.starts_line()) // in case of: namespace test\n{
