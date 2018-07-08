@@ -1280,9 +1280,9 @@ Gtk::TextIter Source::View::get_start_of_expression(Gtk::TextIter iter) {
   bool colon_test=false;
   
   if(is_bracket_language) {
-    if(*iter==';')
+    if(*iter==';' && is_code_iter(iter))
       has_semicolon=true;
-    if(*iter=='{') {
+    if(*iter=='{' && is_code_iter(iter)) {
       iter.backward_char();
       colon_test=true;
     }
@@ -1335,7 +1335,7 @@ Gtk::TextIter Source::View::get_start_of_expression(Gtk::TextIter iter) {
         while(!previous_iter.starts_line() && (*previous_iter==' ' || previous_iter.ends_line()) && previous_iter.backward_char()) {}
         if(*previous_iter!=',' && *previous_iter!=':' && *previous_iter!='=' && *previous_iter!='&' && *previous_iter!='|')
           return iter;
-        else if(*previous_iter==':') {
+        else if(*previous_iter==':' && is_code_iter(previous_iter)) {
           previous_iter.backward_char();
           while(!previous_iter.starts_line() && *previous_iter==' ' && previous_iter.backward_char()) {}
           if(*previous_iter==')') {
@@ -1347,7 +1347,7 @@ Gtk::TextIter Source::View::get_start_of_expression(Gtk::TextIter iter) {
             return iter;
         }
         // Handle for instance: int a =\n    b;
-        else if((*previous_iter=='=' || *previous_iter=='&' || *previous_iter=='|') && !has_semicolon)
+        else if((*previous_iter=='=' || *previous_iter=='&' || *previous_iter=='|') && !has_semicolon && is_code_iter(previous_iter))
           return iter;
       }
     }
