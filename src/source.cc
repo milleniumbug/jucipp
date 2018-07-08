@@ -1276,12 +1276,12 @@ Gtk::TextIter Source::View::get_start_of_expression(Gtk::TextIter iter) {
   if(iter.starts_line())
     return iter;
   
-  bool stream_operator_test=false;
+  bool has_semicolon=false;
   bool colon_test=false;
   
   if(is_bracket_language) {
     if(*iter==';')
-      stream_operator_test=true;
+      has_semicolon=true;
     if(*iter=='{') {
       iter.backward_char();
       colon_test=true;
@@ -1316,7 +1316,7 @@ Gtk::TextIter Source::View::get_start_of_expression(Gtk::TextIter iter) {
       bool stream_operator_found=false;
       bool colon_found=false;
       // Handle << at the beginning of the sentence if iter initially started with ;
-      if(stream_operator_test) {
+      if(has_semicolon) {
         auto test_iter=get_tabs_end_iter(iter);
         if(!test_iter.starts_line() && *test_iter=='<' && is_code_iter(test_iter) &&
            test_iter.forward_char() && *test_iter=='<')
@@ -1328,12 +1328,12 @@ Gtk::TextIter Source::View::get_start_of_expression(Gtk::TextIter iter) {
         if(!test_iter.starts_line() && *test_iter==':' && is_code_iter(test_iter))
           colon_found=true;
       }
-      // Handle : and , on previous line
+      // Handle : , = & | on previous line
       if(!stream_operator_found && !colon_found) {
         auto previous_iter=iter;
         previous_iter.backward_char();
         while(!previous_iter.starts_line() && (*previous_iter==' ' || previous_iter.ends_line()) && previous_iter.backward_char()) {}
-        if(*previous_iter!=',' && *previous_iter!=':')
+        if(*previous_iter!=',' && *previous_iter!=':' && *previous_iter!='=' && *previous_iter!='&' && *previous_iter!='|')
           return iter;
         else if(*previous_iter==':') {
           previous_iter.backward_char();
@@ -1346,6 +1346,9 @@ Gtk::TextIter Source::View::get_start_of_expression(Gtk::TextIter iter) {
           else
             return iter;
         }
+        // Handle for instance: int a =\n    b;
+        else if((*previous_iter=='=' || *previous_iter=='&' || *previous_iter=='|') && !has_semicolon)
+          return iter;
       }
     }
   } while(iter.backward_char());
