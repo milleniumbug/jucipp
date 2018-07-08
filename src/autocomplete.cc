@@ -130,10 +130,10 @@ void Autocomplete::stop() {
 }
 
 void Autocomplete::setup_dialog() {
-  CompletionDialog::get()->on_show=[this] {
+  CompletionDialog::get()->on_show = [this] {
     on_show();
   };
-  
+
   CompletionDialog::get()->on_hide = [this]() {
     view->get_buffer()->end_user_action();
     tooltips.hide();
@@ -141,39 +141,39 @@ void Autocomplete::setup_dialog() {
     on_hide();
     reparse();
   };
-  
+
   CompletionDialog::get()->on_changed = [this](unsigned int index, const std::string &text) {
     if(index >= rows.size()) {
       tooltips.hide();
       return;
     }
-    
+
     on_changed(index, text);
-    
+
     auto tooltip = get_tooltip(index);
     if(tooltip.empty())
       tooltips.hide();
     else {
       tooltips.clear();
-      auto create_tooltip_buffer = [ this, tooltip = std::move(tooltip) ]() {
+      auto create_tooltip_buffer = [this, tooltip = std::move(tooltip)]() {
         auto tooltip_buffer = Gtk::TextBuffer::create(view->get_buffer()->get_tag_table());
-  
+
         tooltip_buffer->insert(tooltip_buffer->get_insert()->get_iter(), tooltip);
-  
+
         return tooltip_buffer;
       };
-  
+
       auto iter = CompletionDialog::get()->start_mark->get_iter();
       tooltips.emplace_back(create_tooltip_buffer, view, view->get_buffer()->create_mark(iter), view->get_buffer()->create_mark(iter));
-  
+
       tooltips.show(true);
     }
   };
-  
-  CompletionDialog::get()->on_select=[this](unsigned int index, const std::string &text, bool hide_window) {
-    if(index>=rows.size())
+
+  CompletionDialog::get()->on_select = [this](unsigned int index, const std::string &text, bool hide_window) {
+    if(index >= rows.size())
       return;
-    
+
     on_select(index, text, hide_window);
   };
 }

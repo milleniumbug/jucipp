@@ -1,10 +1,11 @@
 #pragma once
-#include <gtkmm.h>
 #include <atomic>
 #include <boost/filesystem.hpp>
+#include <gtkmm.h>
 
 class Window : public Gtk::ApplicationWindow {
   Window();
+
 public:
   static Window &get() {
     static Window singleton;
@@ -20,7 +21,7 @@ protected:
 
 private:
   Gtk::AboutDialog about;
-  
+
   Glib::RefPtr<Gtk::CssProvider> css_provider_theme;
   Glib::RefPtr<Gtk::CssProvider> css_provider_tooltips;
 
@@ -34,7 +35,7 @@ private:
   std::string last_replace;
   std::string last_run_command;
   std::string last_run_debug_command;
-  bool case_sensitive_search=true;
-  bool regex_search=false;
-  bool search_entry_shown=false;
+  bool case_sensitive_search = true;
+  bool regex_search = false;
+  bool search_entry_shown = false;
 };

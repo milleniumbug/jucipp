@@ -12173,34 +12173,34 @@ std::experimental::filesystem::is_socket	cpp/experimental/fs/is_socket
 std::experimental::filesystem::is_symlink	cpp/experimental/fs/is_symlink
 std::experimental::filesystem::status_known	cpp/experimental/fs/status_known"}
 )";
-  
+
   class SymbolToUrl {
   public:
     SymbolToUrl(const std::string &symbol_urls) {
-      size_t symbol_start=0;
-      size_t symbol_end=std::string::npos;
-      size_t url_start=std::string::npos;
-      for(size_t c=0;c<symbol_urls.size();++c) {
-        auto &chr=symbol_urls[c];
-        if(chr=='\t') {
-          symbol_end=c;
-          url_start=c+1;
+      size_t symbol_start = 0;
+      size_t symbol_end = std::string::npos;
+      size_t url_start = std::string::npos;
+      for(size_t c = 0; c < symbol_urls.size(); ++c) {
+        auto &chr = symbol_urls[c];
+        if(chr == '\t') {
+          symbol_end = c;
+          url_start = c + 1;
         }
-        else if(chr=='\n') {
-          if(symbol_end!=std::string::npos && url_start!=std::string::npos)
-            map.emplace(symbol_urls.substr(symbol_start, symbol_end-symbol_start), symbol_urls.substr(url_start, c-url_start));
-          symbol_start=c+1;
-          symbol_end=std::string::npos;
-          url_start=std::string::npos;
+        else if(chr == '\n') {
+          if(symbol_end != std::string::npos && url_start != std::string::npos)
+            map.emplace(symbol_urls.substr(symbol_start, symbol_end - symbol_start), symbol_urls.substr(url_start, c - url_start));
+          symbol_start = c + 1;
+          symbol_end = std::string::npos;
+          url_start = std::string::npos;
         }
       }
     }
     std::unordered_map<std::string, std::string> map;
   };
-  
+
   static SymbolToUrl symbol_to_url(symbol_urls);
-  auto it=symbol_to_url.map.find(symbol);
-  if(it==symbol_to_url.map.end())
+  auto it = symbol_to_url.map.find(symbol);
+  if(it == symbol_to_url.map.end())
     return std::string();
-  return "http://en.cppreference.com/w/"+it->second;
+  return "http://en.cppreference.com/w/" + it->second;
 }

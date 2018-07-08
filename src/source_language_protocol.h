@@ -4,10 +4,10 @@
 #include "source.h"
 #include <boost/property_tree/json_parser.hpp>
 #include <list>
-#include <mutex>
-#include <sstream>
 #include <map>
+#include <mutex>
 #include <set>
+#include <sstream>
 
 namespace Source {
   class LanguageProtocolView;
@@ -48,7 +48,7 @@ namespace LanguageProtocol {
 
     std::set<Source::LanguageProtocolView *> views;
     std::mutex views_mutex;
-    
+
     std::mutex initialize_mutex;
 
     std::unique_ptr<TinyProcessLib::Process> process;
@@ -61,7 +61,7 @@ namespace LanguageProtocol {
 
     size_t message_id = 1;
 
-    std::map<size_t, std::pair<Source::LanguageProtocolView*, std::function<void(const boost::property_tree::ptree &, bool error)>>> handlers;
+    std::map<size_t, std::pair<Source::LanguageProtocolView *, std::function<void(const boost::property_tree::ptree &, bool error)>>> handlers;
     std::vector<std::thread> timeout_threads;
     std::mutex timeout_threads_mutex;
 
@@ -73,7 +73,7 @@ namespace LanguageProtocol {
     bool initialized = false;
     Capabilities initialize(Source::LanguageProtocolView *view);
     void close(Source::LanguageProtocolView *view);
-    
+
     void parse_server_message();
     void write_request(Source::LanguageProtocolView *view, const std::string &method, const std::string &params, std::function<void(const boost::property_tree::ptree &, bool)> &&function = nullptr);
     void write_notification(const std::string &method, const std::string &params);
@@ -87,11 +87,11 @@ namespace Source {
     LanguageProtocolView(const boost::filesystem::path &file_path, const Glib::RefPtr<Gsv::Language> &language, std::string language_id_);
     ~LanguageProtocolView() override;
     std::string uri;
-    
+
     bool save() override;
 
     void update_diagnostics(std::vector<LanguageProtocol::Diagnostic> &&diagnostics);
-    
+
     Gtk::TextIter get_iter_at_line_pos(int line, int pos) override;
 
   protected:
@@ -100,21 +100,21 @@ namespace Source {
   private:
     std::string language_id;
     LanguageProtocol::Capabilities capabilities;
-    
+
     std::shared_ptr<LanguageProtocol::Client> client;
 
     size_t document_version = 1;
 
     std::thread initialize_thread;
     Dispatcher dispatcher;
-    
+
     void setup_navigation_and_refactoring();
 
     void escape_text(std::string &text);
     void unescape_text(std::string &text);
-    
+
     void tag_similar_symbols();
-    
+
     Offset get_declaration(const Gtk::TextIter &iter);
 
     Autocomplete autocomplete;
@@ -123,11 +123,11 @@ namespace Source {
     std::vector<std::string> autocomplete_insert;
     std::list<std::pair<Glib::RefPtr<Gtk::TextBuffer::Mark>, Glib::RefPtr<Gtk::TextBuffer::Mark>>> autocomplete_marks;
     bool autocomplete_keep_marks = false;
-    
+
     boost::filesystem::path flow_coverage_executable;
     std::vector<std::pair<Glib::RefPtr<Gtk::TextMark>, Glib::RefPtr<Gtk::TextMark>>> flow_coverage_marks;
-    const std::string flow_coverage_message="Not covered by Flow";
-    size_t num_warnings=0, num_errors=0, num_fix_its=0, num_flow_coverage_warnings=0;
+    const std::string flow_coverage_message = "Not covered by Flow";
+    size_t num_warnings = 0, num_errors = 0, num_fix_its = 0, num_flow_coverage_warnings = 0;
     void add_flow_coverage_tooltips(bool called_in_thread);
   };
 } // namespace Source

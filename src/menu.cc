@@ -1,9 +1,9 @@
 #include "menu.h"
 #include "config.h"
-#include <string>
 #include <iostream>
+#include <string>
 
-const Glib::ustring menu_xml= R"RAW(<interface>
+const Glib::ustring menu_xml = R"RAW(<interface>
   <menu id='right-click-line-menu'>
     <section>
       <item>
@@ -478,21 +478,21 @@ const Glib::ustring menu_xml= R"RAW(<interface>
 )RAW";
 
 void Menu::add_action(const std::string &name, const std::function<void()> &action) {
-  auto g_application=g_application_get_default();
-  auto gio_application=Glib::wrap(g_application, true);
-  auto application=Glib::RefPtr<Gtk::Application>::cast_static(gio_application);
+  auto g_application = g_application_get_default();
+  auto gio_application = Glib::wrap(g_application, true);
+  auto application = Glib::RefPtr<Gtk::Application>::cast_static(gio_application);
 
-  actions[name]=application->add_action(name, action);
+  actions[name] = application->add_action(name, action);
 }
 
 void Menu::set_keys() {
-  auto g_application=g_application_get_default();
-  auto gio_application=Glib::wrap(g_application, true);
-  auto application=Glib::RefPtr<Gtk::Application>::cast_static(gio_application);
+  auto g_application = g_application_get_default();
+  auto gio_application = Glib::wrap(g_application, true);
+  auto application = Glib::RefPtr<Gtk::Application>::cast_static(gio_application);
 
-  for(auto &key: Config::get().menu.keys) {
-    if(key.second.size()>0 && actions.find(key.first)!=actions.end())
-      application->set_accel_for_action("app."+key.first, key.second);
+  for(auto &key : Config::get().menu.keys) {
+    if(key.second.size() > 0 && actions.find(key.first) != actions.end())
+      application->set_accel_for_action("app." + key.first, key.second);
   }
 }
 
@@ -510,7 +510,7 @@ void Menu::build() {
     ptr = Glib::RefPtr<Gio::Menu>::cast_dynamic(object);
     right_click_selected_menu = std::make_unique<Gtk::Menu>(ptr);
   }
-  catch (const Glib::Error &ex) {
+  catch(const Glib::Error &ex) {
     std::cerr << "building menu failed: " << ex.what();
   }
 }

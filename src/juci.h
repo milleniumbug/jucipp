@@ -25,8 +25,8 @@
    [juCi++] --> [tiny-process-library] : use
   \enduml
 */
-#include <gtkmm.h>
 #include <boost/filesystem.hpp>
+#include <gtkmm.h>
 
 class Application : public Gtk::Application {
 public:
@@ -34,6 +34,7 @@ public:
   int on_command_line(const Glib::RefPtr<Gio::ApplicationCommandLine> &cmd) override;
   void on_activate() override;
   void on_startup() override;
+
 private:
   std::vector<boost::filesystem::path> directories;
   std::vector<std::pair<boost::filesystem::path, size_t>> files;

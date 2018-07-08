@@ -1,8 +1,8 @@
 #pragma once
-#include <gtkmm.h>
-#include <mutex>
 #include <functional>
+#include <gtkmm.h>
 #include <list>
+#include <mutex>
 
 class Dispatcher {
 private:
@@ -10,11 +10,12 @@ private:
   std::mutex functions_mutex;
   Glib::Dispatcher dispatcher;
   sigc::connection connection;
+
 public:
   Dispatcher();
   ~Dispatcher();
-  
-  template<typename T>
+
+  template <typename T>
   void post(T &&function) {
     {
       std::unique_lock<std::mutex> lock(functions_mutex);
@@ -22,6 +23,6 @@ public:
     }
     dispatcher();
   }
-  
+
   void disconnect();
 };

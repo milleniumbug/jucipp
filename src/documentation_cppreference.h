@@ -6,4 +6,4 @@ namespace Documentation {
   public:
     static std::string get_url(const std::string &symbol) noexcept;
   };
-}
+} // namespace Documentation

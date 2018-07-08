@@ -2,8 +2,8 @@ class Test {
 public:
   Test() {}
   ~Test() {}
-  
-  int a=0;
+
+  int a = 0;
   void b() {
     ++a;
   }

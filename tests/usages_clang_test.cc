@@ -43,7 +43,7 @@ int main() {
     assert(usages.size() == 1);
     assert(usages[0].path == path);
     assert(usages[0].lines.size() == 1);
-    assert(usages[0].lines[0] == "  test.a=2;");
+    assert(usages[0].lines[0] == "  test.a = 2;");
     assert(usages[0].offsets.size() == 1);
     assert(usages[0].offsets[0].first.line == 6);
     assert(usages[0].offsets[0].first.index == 8);
@@ -54,7 +54,7 @@ int main() {
     assert(usages.size() == 2);
     assert(usages[1].path == project_path / "test.hpp");
     assert(usages[1].lines.size() == 2);
-    assert(usages[1].lines[0] == "  int a=0;");
+    assert(usages[1].lines[0] == "  int a = 0;");
     assert(usages[1].lines[1] == "    ++a;");
     assert(usages[1].offsets.size() == 2);
     assert(usages[1].offsets[0].first.line == 6);
@@ -193,7 +193,7 @@ int main() {
         assert(usages.size() == 1);
         assert(usages[0].path == cache_it->first);
         assert(usages[0].lines.size() == 1);
-        assert(usages[0].lines[0] == "  test.a=2;");
+        assert(usages[0].lines[0] == "  test.a = 2;");
         assert(usages[0].offsets.size() == 1);
         assert(usages[0].offsets[0].first.line == 6);
         assert(usages[0].offsets[0].first.index == 8);
@@ -217,7 +217,7 @@ int main() {
         assert(usages.size() == 1);
         assert(usages[0].path == cache_it->first);
         assert(usages[0].lines.size() == 2);
-        assert(usages[0].lines[0] == "  int a=0;");
+        assert(usages[0].lines[0] == "  int a = 0;");
         assert(usages[0].lines[1] == "    ++a;");
         assert(usages[0].offsets.size() == 2);
         assert(usages[0].offsets[0].first.line == 6);
@@ -258,16 +258,16 @@ int main() {
   }
   {
     assert(!Usages::Clang::caches.empty());
-    assert(boost::filesystem::exists(build_path/Usages::Clang::cache_folder));
-    assert(boost::filesystem::exists(build_path/Usages::Clang::cache_folder/"main.cpp.usages"));
-    assert(boost::filesystem::exists(build_path/Usages::Clang::cache_folder/"test.hpp.usages"));
-    assert(boost::filesystem::exists(build_path/Usages::Clang::cache_folder/"test2.hpp.usages"));
-    
+    assert(boost::filesystem::exists(build_path / Usages::Clang::cache_folder));
+    assert(boost::filesystem::exists(build_path / Usages::Clang::cache_folder / "main.cpp.usages"));
+    assert(boost::filesystem::exists(build_path / Usages::Clang::cache_folder / "test.hpp.usages"));
+    assert(boost::filesystem::exists(build_path / Usages::Clang::cache_folder / "test2.hpp.usages"));
+
     Usages::Clang::erase_all_caches_for_project(project_path, build_path);
     assert(Usages::Clang::caches.empty());
-    assert(boost::filesystem::exists(build_path/Usages::Clang::cache_folder));
-    assert(!boost::filesystem::exists(build_path/Usages::Clang::cache_folder/"main.cpp.usages"));
-    assert(!boost::filesystem::exists(build_path/Usages::Clang::cache_folder/"test.hpp.usages"));
-    assert(!boost::filesystem::exists(build_path/Usages::Clang::cache_folder/"test2.hpp.usages"));
+    assert(boost::filesystem::exists(build_path / Usages::Clang::cache_folder));
+    assert(!boost::filesystem::exists(build_path / Usages::Clang::cache_folder / "main.cpp.usages"));
+    assert(!boost::filesystem::exists(build_path / Usages::Clang::cache_folder / "test.hpp.usages"));
+    assert(!boost::filesystem::exists(build_path / Usages::Clang::cache_folder / "test2.hpp.usages"));
   }
 }

@@ -40,19 +40,19 @@ public:
 
   /// The handler is not run in the main loop.
   std::function<void(std::string &buffer, int line_number, int column)> add_rows = [](std::string &, int, int) {};
-  
+
   std::function<void()> on_show = [] {};
   std::function<void()> on_hide = [] {};
   std::function<void(unsigned int, const std::string &)> on_changed = [](unsigned int index, const std::string &text) {};
   std::function<void(unsigned int, const std::string &, bool)> on_select = [](unsigned int index, const std::string &text, bool hide_window) {};
-  
-  std::function<std::string(unsigned int)> get_tooltip = [](unsigned int index) {return std::string();};
+
+  std::function<std::string(unsigned int)> get_tooltip = [](unsigned int index) { return std::string(); };
 
   Autocomplete(Gtk::TextView *view, bool &interactive_completion, guint &last_keyval, bool strip_word);
 
   void run();
   void stop();
-  
+
 private:
   void setup_dialog();
 };

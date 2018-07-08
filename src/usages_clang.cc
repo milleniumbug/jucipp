@@ -91,8 +91,7 @@ Usages::Clang::Cache::Cache(boost::filesystem::path project_path_, boost::filesy
         }
       }
     }
-  },
-                      &visitor_data);
+  }, &visitor_data);
 }
 
 std::vector<std::pair<clangmm::Offset, clangmm::Offset>> Usages::Clang::Cache::get_similar_token_offsets(clangmm::Cursor::Kind kind, const std::string &spelling,
@@ -142,9 +141,9 @@ std::vector<Usages::Clang::Usages> Usages::Clang::get_usages(const boost::filesy
   auto paths = find_paths(project_path, build_path, debug_path);
   auto pair = parse_paths(spelling, paths);
   PathSet all_cursors_paths;
-  auto canonical=cursor.get_canonical();
+  auto canonical = cursor.get_canonical();
   all_cursors_paths.emplace(canonical.get_source_location().get_path());
-  for(auto &cursor: canonical.get_all_overridden_cursors())
+  for(auto &cursor : canonical.get_all_overridden_cursors())
     all_cursors_paths.emplace(cursor.get_source_location().get_path());
   auto pair2 = find_potential_paths(all_cursors_paths, project_path, pair.first, pair.second);
   auto &potential_paths = pair2.first;
@@ -243,7 +242,7 @@ std::vector<Usages::Clang::Usages> Usages::Clang::get_usages(const boost::filesy
           buffer.assign(std::istreambuf_iterator<char>(stream), std::istreambuf_iterator<char>());
 
           auto arguments = CompileCommands::get_arguments(build_path, path);
-          arguments.emplace_back("-w"); // Disable all warnings
+          arguments.emplace_back("-w");                              // Disable all warnings
           for(auto it = arguments.begin(); it != arguments.end();) { // remove comments from system headers
             if(*it == "-fretain-comments-from-system-headers")
               it = arguments.erase(it);
@@ -321,8 +320,7 @@ void Usages::Clang::cache(const boost::filesystem::path &project_path, const boo
       visitor_data->paths.emplace(path);
 
     return CXChildVisit_Continue;
-  },
-                      &visitor_data);
+  }, &visitor_data);
 
   visitor_data.paths.erase(path);
 
@@ -632,14 +630,14 @@ std::pair<Usages::Clang::PathSet, Usages::Clang::PathSet> Usages::Clang::find_po
   PathSet potential_paths;
   PathSet all_includes;
 
-  bool first=true;
-  for(auto &path: paths) {
+  bool first = true;
+  for(auto &path : paths) {
     if(filesystem::file_in_path(path, project_path)) {
       for(auto &path_with_spelling : paths_with_spelling) {
         auto path_all_includes = get_all_includes(path_with_spelling, paths_includes);
         if((path_all_includes.find(path) != path_all_includes.end() || path_with_spelling == path)) {
           potential_paths.emplace(path_with_spelling);
-  
+
           for(auto &include : path_all_includes)
             all_includes.emplace(include);
         }
@@ -649,12 +647,12 @@ std::pair<Usages::Clang::PathSet, Usages::Clang::PathSet> Usages::Clang::find_po
       if(first) {
         for(auto &path_with_spelling : paths_with_spelling) {
           potential_paths.emplace(path_with_spelling);
-    
+
           auto path_all_includes = get_all_includes(path_with_spelling, paths_includes);
           for(auto &include : path_all_includes)
             all_includes.emplace(include);
         }
-        first=false;
+        first = false;
       }
     }
   }
