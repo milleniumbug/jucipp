@@ -1252,20 +1252,13 @@ Gtk::TextIter Source::View::find_non_whitespace_code_iter_backward(Gtk::TextIter
     return iter;
   if(!comment_tag)
     return iter;
-  while(!iter.starts_line() && (iter.has_tag(comment_tag) ||
-#if GTKMM_MAJOR_VERSION > 3 || (GTKMM_MAJOR_VERSION == 3 && GTKMM_MINOR_VERSION >= 20)
-                                iter.starts_tag(comment_tag) ||
-#else
-                                *iter == '/' ||
-#endif
-                                *iter == ' ' || *iter == '\t' || iter.ends_line()) &&
-        iter.backward_char()) {
+  while(!iter.starts_line() && (is_comment_iter(iter) || *iter == ' ' || *iter == '\t' || iter.ends_line()) && iter.backward_char()) {
   }
   return iter;
 }
 
 Gtk::TextIter Source::View::get_start_of_expression(Gtk::TextIter iter) {
-  while(!iter.starts_line() && (*iter == ' ' || *iter == '\t' || iter.ends_line() || !is_code_iter(iter) || *iter == '/') && iter.backward_char()) {
+  while(!iter.starts_line() && (*iter == ' ' || *iter == '\t' || iter.ends_line() || !is_code_iter(iter) || is_comment_iter(iter)) && iter.backward_char()) {
   }
 
   if(iter.starts_line())
@@ -1323,15 +1316,21 @@ Gtk::TextIter Source::View::get_start_of_expression(Gtk::TextIter iter) {
         if(!test_iter.starts_line() && *test_iter == ':' && is_code_iter(test_iter))
           colon_found = true;
       }
-      // Handle : , = & | on previous line
+      const auto is_multiline_operator = [](const Gtk::TextIter &iter) {
+        if(*iter == '=' || *iter == '+' || *iter == '-' || *iter == '*' || *iter == '/' ||
+           *iter == '%' || *iter == '<' || *iter == '>' || *iter == '&' || *iter == '|')
+          return true;
+        return false;
+      };
+      // Handle ':', ',', or operators that can be used between two lines, on previous line:
       if(!stream_operator_found && !colon_found) {
         auto previous_iter = iter;
         previous_iter.backward_char();
-        while(!previous_iter.starts_line() && (*previous_iter == ' ' || previous_iter.ends_line()) && previous_iter.backward_char()) {
+        while(!previous_iter.starts_line() && (*previous_iter == ' ' || previous_iter.ends_line() || is_comment_iter(previous_iter)) && previous_iter.backward_char()) {
         }
-        if(*previous_iter != ',' && *previous_iter != ':' && *previous_iter != '=' && *previous_iter != '&' && *previous_iter != '|')
+        if((*previous_iter != ',' && *previous_iter != ':' && !is_multiline_operator(previous_iter)) || !is_code_iter(previous_iter) || is_comment_iter(previous_iter))
           return iter;
-        else if(*previous_iter == ':' && is_code_iter(previous_iter)) {
+        else if(*previous_iter == ':') {
           previous_iter.backward_char();
           while(!previous_iter.starts_line() && *previous_iter == ' ' && previous_iter.backward_char()) {
           }
@@ -1344,7 +1343,7 @@ Gtk::TextIter Source::View::get_start_of_expression(Gtk::TextIter iter) {
             return iter;
         }
         // Handle for instance: int a =\n    b;
-        else if((*previous_iter == '=' || *previous_iter == '&' || *previous_iter == '|') && !has_semicolon && is_code_iter(previous_iter))
+        else if(!has_semicolon && is_multiline_operator(previous_iter))
           return iter;
       }
     }

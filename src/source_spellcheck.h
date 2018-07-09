@@ -17,6 +17,8 @@ namespace Source {
 
   protected:
     bool is_code_iter(const Gtk::TextIter &iter);
+    /// Returns true, for instance for C++, if iter is at either characters of // or /*
+    bool is_comment_iter(const Gtk::TextIter &iter);
     bool spellcheck_all = false;
     guint last_keyval = 0;
 

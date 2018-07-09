@@ -427,6 +427,24 @@ bool Source::SpellCheckView::is_code_iter(const Gtk::TextIter &iter) {
   return true;
 }
 
+bool Source::SpellCheckView::is_comment_iter(const Gtk::TextIter &iter) {
+  if(!comment_tag)
+    return false;
+  if(iter.has_tag(comment_tag))
+    return true;
+#if GTKMM_MAJOR_VERSION > 3 || (GTKMM_MAJOR_VERSION == 3 && GTKMM_MINOR_VERSION >= 20)
+  if(iter.starts_tag(comment_tag))
+    return true;
+#else
+  if(*iter == '/') {
+    auto next_iter = iter;
+    if(!next_iter.ends_line() && next_iter.forward_char() && next_iter.has_tag(comment_tag))
+      return true;
+  }
+#endif
+  return false;
+}
+
 bool Source::SpellCheckView::is_word_iter(const Gtk::TextIter &iter) {
   auto previous_iter = iter;
   size_t backslash_count = 0;

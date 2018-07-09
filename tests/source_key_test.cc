@@ -664,6 +664,54 @@ int main() {
     }
 
     {
+      buffer->set_text("  int a = 2 +\n"
+                       "    2;");
+      view.on_key_press_event(&event);
+      g_assert(buffer->get_text() == "  int a = 2 +\n"
+                                     "    2;\n"
+                                     "  ");
+      g_assert(buffer->get_insert()->get_iter() == buffer->end());
+    }
+    {
+      buffer->set_text("  int a = 2 /\n"
+                       "    2;");
+      view.on_key_press_event(&event);
+      g_assert(buffer->get_text() == "  int a = 2 /\n"
+                                     "    2;\n"
+                                     "  ");
+      g_assert(buffer->get_insert()->get_iter() == buffer->end());
+    }
+    {
+      buffer->set_text("  int a = 2 + // test\n"
+                       "    2;");
+      while(Gtk::Main::events_pending())
+        Gtk::Main::iteration(false);
+      view.on_key_press_event(&event);
+      g_assert(buffer->get_text() == "  int a = 2 + // test\n"
+                                     "    2;\n"
+                                     "  ");
+      g_assert(buffer->get_insert()->get_iter() == buffer->end());
+    }
+    {
+      buffer->set_text("  int a = 2;\n"
+                       "    2;");
+      view.on_key_press_event(&event);
+      g_assert(buffer->get_text() == "  int a = 2;\n"
+                                     "    2;\n"
+                                     "    ");
+      g_assert(buffer->get_insert()->get_iter() == buffer->end());
+    }
+    {
+      buffer->set_text("  int a = 2 #\n"
+                       "    2;");
+      view.on_key_press_event(&event);
+      g_assert(buffer->get_text() == "  int a = 2 #\n"
+                                     "    2;\n"
+                                     "    ");
+      g_assert(buffer->get_insert()->get_iter() == buffer->end());
+    }
+
+    {
       buffer->set_text("  func([");
       view.on_key_press_event(&event);
       g_assert(buffer->get_text() == "  func([\n"
