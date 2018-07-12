@@ -1729,44 +1729,51 @@ bool Source::View::on_key_press_event(GdkEventKey *key) {
   }
 }
 
-//Basic indentation
+// Basic indentation
 bool Source::View::on_key_press_event_basic(GdkEventKey *key) {
   auto iter = get_buffer()->get_insert()->get_iter();
 
-  //Indent as in current or previous line
+  // Indent as in current or previous line
   if((key->keyval == GDK_KEY_Return || key->keyval == GDK_KEY_KP_Enter) && !get_buffer()->get_has_selection() && !iter.starts_line()) {
     cleanup_whitespace_characters_on_return(iter);
 
     iter = get_buffer()->get_insert()->get_iter();
-    auto tabs = get_line_before(get_tabs_end_iter(iter));
+    auto condition_iter = iter;
+    condition_iter.backward_char();
+    condition_iter = find_non_whitespace_code_iter_backward(condition_iter);
+    auto start_iter = get_start_of_expression(condition_iter);
+    auto tabs_end_iter = get_tabs_end_iter(start_iter);
+    auto tabs = get_line_before(tabs_end_iter);
 
-    auto previous_iter = iter;
-    if(previous_iter.backward_char() && *previous_iter == ':' && language && language->get_id() == "python") // Python indenting after :
-      tabs += tab;
-    else {
-      int line_nr = iter.get_line();
-      if(iter.ends_line() && (line_nr + 1) < get_buffer()->get_line_count()) {
-        auto next_line_tabs = get_line_before(get_tabs_end_iter(line_nr + 1));
-        if(next_line_tabs.size() > tabs.size()) {
-          get_buffer()->insert_at_cursor('\n' + next_line_tabs);
-          scroll_to(get_buffer()->get_insert());
-          return true;
-        }
+    // Python indenting after :
+    if(*condition_iter == ':' && language && language->get_id() == "python") {
+      get_buffer()->insert_at_cursor('\n' + tabs + tab);
+      scroll_to(get_buffer()->get_insert());
+      return true;
+    }
+
+    int line_nr = iter.get_line();
+    if(iter.ends_line() && (line_nr + 1) < get_buffer()->get_line_count()) {
+      auto next_line_tabs = get_line_before(get_tabs_end_iter(line_nr + 1));
+      if(next_line_tabs.size() > tabs.size()) {
+        get_buffer()->insert_at_cursor('\n' + next_line_tabs);
+        scroll_to(get_buffer()->get_insert());
+        return true;
       }
     }
     get_buffer()->insert_at_cursor('\n' + tabs);
     scroll_to(get_buffer()->get_insert());
     return true;
   }
-  //Indent as in next or previous line
+  // Indent as in next or previous line
   else if(key->keyval == GDK_KEY_Tab && (key->state & GDK_SHIFT_MASK) == 0) {
     // Special case if insert is at beginning of empty line:
     if(iter.starts_line() && iter.ends_line() && !get_buffer()->get_has_selection()) {
       auto prev_line_iter = iter;
       while(prev_line_iter.starts_line() && prev_line_iter.backward_char()) {
       }
-      prev_line_iter = get_start_of_expression(prev_line_iter);
-      auto prev_line_tabs_end_iter = get_tabs_end_iter(prev_line_iter);
+      auto start_iter = get_start_of_expression(prev_line_iter);
+      auto prev_line_tabs_end_iter = get_tabs_end_iter(start_iter);
 
       auto next_line_iter = iter;
       while(next_line_iter.starts_line() && next_line_iter.forward_char()) {
@@ -1803,7 +1810,7 @@ bool Source::View::on_key_press_event_basic(GdkEventKey *key) {
     get_buffer()->delete_mark(selection_end_mark);
     return true;
   }
-  //Indent left when clicking shift-tab, no matter where in the line the cursor is. Also works on selected text.
+  // Indent left when clicking shift-tab, no matter where in the line the cursor is. Also works on selected text.
   else if((key->keyval == GDK_KEY_ISO_Left_Tab || key->keyval == GDK_KEY_Tab) && (key->state & GDK_SHIFT_MASK) > 0) {
     Gtk::TextIter selection_start, selection_end;
     get_buffer()->get_selection_bounds(selection_start, selection_end);
@@ -1842,7 +1849,7 @@ bool Source::View::on_key_press_event_basic(GdkEventKey *key) {
     }
     return true;
   }
-  //"Smart" backspace key
+  // "Smart" backspace key
   else if(key->keyval == GDK_KEY_BackSpace && !get_buffer()->get_has_selection()) {
     auto line = get_line_before();
     bool do_smart_backspace = true;
@@ -1867,7 +1874,7 @@ bool Source::View::on_key_press_event_basic(GdkEventKey *key) {
       }
     }
   }
-  //"Smart" delete key
+  // "Smart" delete key
   else if(key->keyval == GDK_KEY_Delete && !get_buffer()->get_has_selection()) {
     auto insert_iter = iter;
     bool do_smart_delete = true;
@@ -1911,10 +1918,10 @@ bool Source::View::on_key_press_event_basic(GdkEventKey *key) {
     return true;
   }
 
-  //Workaround for TextView::on_key_press_event bug sometimes causing segmentation faults
-  //TODO: figure out the bug and create pull request to gtk
-  //Have only experienced this on OS X
-  //Note: valgrind reports issues on TextView::on_key_press_event as well
+  // Workaround for TextView::on_key_press_event bug sometimes causing segmentation faults
+  // TODO: figure out the bug and create pull request to gtk
+  // Have only experienced this on OS X
+  // Note: valgrind reports issues on TextView::on_key_press_event as well
   auto unicode = gdk_keyval_to_unicode(key->keyval);
   if((key->state & (GDK_CONTROL_MASK | GDK_META_MASK)) == 0 && unicode >= 32 && unicode != 127 &&
      (previous_non_modifier_keyval < GDK_KEY_dead_grave || previous_non_modifier_keyval > GDK_KEY_dead_greek)) {
@@ -1926,7 +1933,7 @@ bool Source::View::on_key_press_event_basic(GdkEventKey *key) {
     get_buffer()->insert_at_cursor(Glib::ustring(1, unicode));
     scroll_to(get_buffer()->get_insert());
 
-    //Trick to make the cursor visible right after insertion:
+    // Trick to make the cursor visible right after insertion:
     set_cursor_visible(false);
     set_cursor_visible();
 
@@ -1987,8 +1994,8 @@ bool Source::View::on_key_press_event_bracket_language(GdkEventKey *key) {
     condition_iter.backward_char();
     condition_iter = find_non_whitespace_code_iter_backward(condition_iter);
     auto start_iter = get_start_of_expression(condition_iter);
-    auto tabs_end_iter = (get_tabs_end_iter(get_buffer()->get_iter_at_line(start_iter.get_line())));
-    auto tabs = get_line_before(get_tabs_end_iter(get_buffer()->get_iter_at_line(start_iter.get_line())));
+    auto tabs_end_iter = get_tabs_end_iter(start_iter);
+    auto tabs = get_line_before(tabs_end_iter);
 
     /*
      * Change tabs after ending comment block with an extra space (as in this case)
