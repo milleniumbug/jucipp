@@ -963,6 +963,24 @@ int main() {
       g_assert(buffer->get_insert()->get_iter().get_line_offset() == 4);
     }
     {
+      buffer->set_text("  class Class {\n"
+                       "    void Class():");
+      view.on_key_press_event(&event);
+      g_assert(buffer->get_text() == "  class Class {\n"
+                                     "    void Class():\n"
+                                     "    ");
+      g_assert(buffer->get_insert()->get_iter().get_line() == 2);
+      g_assert(buffer->get_insert()->get_iter().get_line_offset() == 4);
+    }
+    {
+      buffer->set_text("  void Class::Class() :");
+      view.on_key_press_event(&event);
+      g_assert(buffer->get_text() == "  void Class::Class() :\n"
+                                     "  ");
+      g_assert(buffer->get_insert()->get_iter().get_line() == 1);
+      g_assert(buffer->get_insert()->get_iter().get_line_offset() == 2);
+    }
+    {
       buffer->set_text("  void Class::Class() :\n"
                        "      var(1) {");
       view.on_key_press_event(&event);
@@ -972,6 +990,31 @@ int main() {
                                      "  }");
       g_assert(buffer->get_insert()->get_iter().get_line() == 2);
       g_assert(buffer->get_insert()->get_iter().get_line_offset() == 4);
+    }
+    {
+      buffer->set_text("  class Test {\n"
+                       "  public:\n"
+                       "    ;");
+      view.on_key_press_event(&event);
+      g_assert(buffer->get_text() == "  class Test {\n"
+                                     "  public:\n"
+                                     "    ;\n"
+                                     "    ");
+      g_assert(buffer->get_insert()->get_iter().get_line() == 3);
+      g_assert(buffer->get_insert()->get_iter().get_line_offset() == 4);
+    }
+    {
+      buffer->set_text("  class Test {\n"
+                       "  public:\n"
+                       "    void test() {");
+      view.on_key_press_event(&event);
+      g_assert(buffer->get_text() == "  class Test {\n"
+                                     "  public:\n"
+                                     "    void test() {\n"
+                                     "      \n"
+                                     "    }");
+      g_assert(buffer->get_insert()->get_iter().get_line() == 3);
+      g_assert(buffer->get_insert()->get_iter().get_line_offset() == 6);
     }
     {
       buffer->set_text("  void Class::Class(int a,\n"

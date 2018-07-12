@@ -1301,51 +1301,48 @@ Gtk::TextIter Source::View::get_start_of_expression(Gtk::TextIter iter) {
       break;
 
     if(iter.starts_line() && para_count == 0 && square_count == 0) {
-      bool stream_operator_found = false;
-      bool colon_found = false;
+      if(!is_bracket_language)
+        return iter;
       // Handle << at the beginning of the sentence if iter initially started with ;
       if(has_semicolon) {
         auto test_iter = get_tabs_end_iter(iter);
         if(!test_iter.starts_line() && *test_iter == '<' && is_code_iter(test_iter) &&
            test_iter.forward_char() && *test_iter == '<')
-          stream_operator_found = true;
+          continue;
       }
       // Handle : at the beginning of the sentence if iter initially started with {
-      else if(colon_test) {
+      if(colon_test) {
         auto test_iter = get_tabs_end_iter(iter);
         if(!test_iter.starts_line() && *test_iter == ':' && is_code_iter(test_iter))
-          colon_found = true;
+          continue;
       }
-      const auto is_multiline_operator = [](const Gtk::TextIter &iter) {
-        if(*iter == '=' || *iter == '+' || *iter == '-' || *iter == '*' || *iter == '/' ||
-           *iter == '%' || *iter == '<' || *iter == '>' || *iter == '&' || *iter == '|')
-          return true;
-        return false;
-      };
-      // Handle ':', ',', or operators that can be used between two lines, on previous line:
-      if(!stream_operator_found && !colon_found) {
-        auto previous_iter = iter;
+      // Handle ',', ':', or operators that can be used between two lines, on previous line:
+      auto previous_iter = iter;
+      previous_iter.backward_char();
+      while(!previous_iter.starts_line() && (*previous_iter == ' ' || previous_iter.ends_line() || is_comment_iter(previous_iter)) && previous_iter.backward_char()) {
+      }
+      if(previous_iter.starts_line())
+        return iter;
+      if(colon_test && *previous_iter == ':') {
         previous_iter.backward_char();
-        while(!previous_iter.starts_line() && (*previous_iter == ' ' || previous_iter.ends_line() || is_comment_iter(previous_iter)) && previous_iter.backward_char()) {
+        while(!previous_iter.starts_line() && *previous_iter == ' ' && previous_iter.backward_char()) {
         }
-        if((*previous_iter != ',' && *previous_iter != ':' && !is_multiline_operator(previous_iter)) || !is_code_iter(previous_iter) || is_comment_iter(previous_iter))
-          return iter;
-        else if(*previous_iter == ':') {
-          previous_iter.backward_char();
-          while(!previous_iter.starts_line() && *previous_iter == ' ' && previous_iter.backward_char()) {
-          }
-          if(*previous_iter == ')') {
-            auto token = get_token(get_tabs_end_iter(get_buffer()->get_iter_at_line(previous_iter.get_line())));
-            if(token == "case")
-              return iter;
-          }
-          else
-            return iter;
+        if(*previous_iter == ')') {
+          auto token = get_token(get_tabs_end_iter(previous_iter));
+          if(token != "case")
+            continue; // Continue at for instance: Test::Test():\n    test(2) {
         }
-        // Handle for instance: int a =\n    b;
-        else if(!has_semicolon && is_multiline_operator(previous_iter))
-          return iter;
+        return iter;
       }
+      // Handle for instance: int a =\n    b;
+      if(*previous_iter == '=' || *previous_iter == '+' || *previous_iter == '-' || *previous_iter == '*' || *previous_iter == '/' ||
+         *previous_iter == '%' || *previous_iter == '<' || *previous_iter == '>' || *previous_iter == '&' || *previous_iter == '|') {
+        if(has_semicolon)
+          continue;
+        return iter;
+      }
+      if(*previous_iter != ',')
+        return iter;
     }
   } while(iter.backward_char());
 
@@ -2244,13 +2241,16 @@ bool Source::View::on_key_press_event_bracket_language(GdkEventKey *key) {
     else if(*condition_iter == ':' && is_code_iter(condition_iter)) {
       bool perform_indent = true;
       auto iter = condition_iter;
+      if(!iter.starts_line())
+        iter.backward_char();
       while(!iter.starts_line() && *iter == ' ' && iter.backward_char()) {
       }
       if(*iter == ')') {
         auto token = get_token(get_tabs_end_iter(get_buffer()->get_iter_at_line(iter.get_line())));
-        if(token != "case")
+        if(token != "case") // Do not move left for instance: void Test::Test():
           perform_indent = false;
       }
+
       if(perform_indent) {
         Gtk::TextIter found_curly_iter;
         if(find_open_curly_bracket_backward(iter, found_curly_iter)) {
