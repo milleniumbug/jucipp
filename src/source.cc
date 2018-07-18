@@ -2595,14 +2595,19 @@ bool Source::View::on_key_press_event_smart_inserts(GdkEventKey *key) {
     }
     // Insert {}
     else if(key->keyval == GDK_KEY_braceleft && allow_insertion(iter)) {
-      // Do not add } if next line has a higher indentation
       auto start_iter = get_start_of_expression(iter);
-      if(iter.get_line() + 1 < get_buffer()->get_line_count() && *start_iter != '(' && *start_iter != '[' && *start_iter != '{') {
-        auto tabs_end_iter = (get_tabs_end_iter(get_buffer()->get_iter_at_line(start_iter.get_line())));
-        auto next_line_iter = get_buffer()->get_iter_at_line(iter.get_line() + 1);
-        auto next_line_tabs_end_iter = (get_tabs_end_iter(get_buffer()->get_iter_at_line(next_line_iter.get_line())));
-        if(next_line_tabs_end_iter.get_line_offset() > tabs_end_iter.get_line_offset())
-          return false;
+      // Do not add } if { is at end of line and next line has a higher indentation
+      auto test_iter = iter;
+      while(!test_iter.ends_line() && (*test_iter == ' ' || *test_iter == '\t' || !is_code_iter(test_iter) || is_comment_iter(test_iter)) && test_iter.forward_char()) {
+      }
+      if(test_iter.ends_line()) {
+        if(iter.get_line() + 1 < get_buffer()->get_line_count() && *start_iter != '(' && *start_iter != '[' && *start_iter != '{') {
+          auto tabs_end_iter = (get_tabs_end_iter(get_buffer()->get_iter_at_line(start_iter.get_line())));
+          auto next_line_iter = get_buffer()->get_iter_at_line(iter.get_line() + 1);
+          auto next_line_tabs_end_iter = (get_tabs_end_iter(get_buffer()->get_iter_at_line(next_line_iter.get_line())));
+          if(next_line_tabs_end_iter.get_line_offset() > tabs_end_iter.get_line_offset())
+            return false;
+        }
       }
 
       Gtk::TextIter close_iter;

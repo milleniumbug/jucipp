@@ -1526,6 +1526,62 @@ int main() {
       g_assert(buffer->get_insert()->get_iter() == iter);
     }
     {
+      buffer->set_text("  if(true)  // test\n"
+                       "  ;");
+      while(Gtk::Main::events_pending())
+        Gtk::Main::iteration(false);
+      auto iter = buffer->get_iter_at_line(0);
+      iter.forward_chars(11);
+      buffer->place_cursor(iter);
+      view.on_key_press_event(&event);
+      g_assert(buffer->get_text() == "  if(true) {} // test\n"
+                                     "  ;");
+      iter = buffer->get_iter_at_line(0);
+      iter.forward_chars(12);
+      g_assert(buffer->get_insert()->get_iter() == iter);
+    }
+    {
+      buffer->set_text("  if(true)  // test\n"
+                       "    ;");
+      while(Gtk::Main::events_pending())
+        Gtk::Main::iteration(false);
+      auto iter = buffer->get_iter_at_line(0);
+      iter.forward_chars(11);
+      buffer->place_cursor(iter);
+      view.on_key_press_event(&event);
+      g_assert(buffer->get_text() == "  if(true) { // test\n"
+                                     "    ;");
+      iter = buffer->get_iter_at_line(0);
+      iter.forward_chars(12);
+      g_assert(buffer->get_insert()->get_iter() == iter);
+    }
+    {
+      buffer->set_text("  a= if(true) {\n"
+                       "    ;");
+      auto iter = buffer->get_iter_at_line(0);
+      iter.forward_chars(4);
+      buffer->place_cursor(iter);
+      view.on_key_press_event(&event);
+      g_assert(buffer->get_text() == "  a={} if(true) {\n"
+                                     "    ;");
+      iter = buffer->get_iter_at_line(0);
+      iter.forward_chars(5);
+      g_assert(buffer->get_insert()->get_iter() == iter);
+    }
+    {
+      buffer->set_text("  if(a==) {\n"
+                       "    ;");
+      auto iter = buffer->get_iter_at_line(0);
+      iter.forward_chars(8);
+      buffer->place_cursor(iter);
+      view.on_key_press_event(&event);
+      g_assert(buffer->get_text() == "  if(a=={}) {\n"
+                                     "    ;");
+      iter = buffer->get_iter_at_line(0);
+      iter.forward_chars(9);
+      g_assert(buffer->get_insert()->get_iter() == iter);
+    }
+    {
       buffer->set_text("namespace test \n"
                        "{\n"
                        "  \n"
