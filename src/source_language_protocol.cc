@@ -1283,18 +1283,18 @@ void Source::LanguageProtocolView::setup_autocomplete() {
 
   signal_key_press_event().connect([this](GdkEventKey *event) {
     if((event->keyval == GDK_KEY_Tab || event->keyval == GDK_KEY_ISO_Left_Tab) && (event->state & GDK_SHIFT_MASK) == 0) {
-      if(!autocomplete_marks.empty()) {
-        auto it = autocomplete_marks.begin();
+      if(!argument_marks.empty()) {
+        auto it = argument_marks.begin();
         auto start = it->first->get_iter();
         auto end = it->second->get_iter();
         if(start == end)
           return false;
-        autocomplete_keep_marks = true;
+        keep_argument_marks = true;
         get_buffer()->select_range(it->first->get_iter(), it->second->get_iter());
-        autocomplete_keep_marks = false;
+        keep_argument_marks = false;
         get_buffer()->delete_mark(it->first);
         get_buffer()->delete_mark(it->second);
-        autocomplete_marks.erase(it);
+        argument_marks.erase(it);
         return true;
       }
     }
@@ -1303,22 +1303,22 @@ void Source::LanguageProtocolView::setup_autocomplete() {
 
   get_buffer()->signal_mark_set().connect([this](const Gtk::TextBuffer::iterator &iterator, const Glib::RefPtr<Gtk::TextBuffer::Mark> &mark) {
     if(mark->get_name() == "insert") {
-      if(!autocomplete_keep_marks) {
-        for(auto &pair : autocomplete_marks) {
+      if(!keep_argument_marks) {
+        for(auto &pair : argument_marks) {
           get_buffer()->delete_mark(pair.first);
           get_buffer()->delete_mark(pair.second);
         }
-        autocomplete_marks.clear();
+        argument_marks.clear();
       }
     }
   });
 
   autocomplete.on_show = [this] {
-    for(auto &pair : autocomplete_marks) {
+    for(auto &pair : argument_marks) {
       get_buffer()->delete_mark(pair.first);
       get_buffer()->delete_mark(pair.second);
     }
-    autocomplete_marks.clear();
+    argument_marks.clear();
     hide_tooltips();
   };
 
@@ -1367,16 +1367,16 @@ void Source::LanguageProtocolView::setup_autocomplete() {
         auto end = start;
         start.forward_chars(offset.first);
         end.forward_chars(offset.second);
-        autocomplete_marks.emplace_back(get_buffer()->create_mark(start), get_buffer()->create_mark(end));
+        argument_marks.emplace_back(get_buffer()->create_mark(start), get_buffer()->create_mark(end));
       }
-      if(!autocomplete_marks.empty()) {
-        auto it = autocomplete_marks.begin();
-        autocomplete_keep_marks = true;
+      if(!argument_marks.empty()) {
+        auto it = argument_marks.begin();
+        keep_argument_marks = true;
         get_buffer()->select_range(it->first->get_iter(), it->second->get_iter());
-        autocomplete_keep_marks = false;
+        keep_argument_marks = false;
         get_buffer()->delete_mark(it->first);
         get_buffer()->delete_mark(it->second);
-        autocomplete_marks.erase(it);
+        argument_marks.erase(it);
       }
     }
     else

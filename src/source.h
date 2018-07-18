@@ -141,6 +141,8 @@ namespace Source {
     char tab_char;
     std::string tab;
 
+    /// After autocomplete, arguments could be marked so that one can use tab to select the next argument
+    bool keep_argument_marks = false;
     bool interactive_completion = true;
 
   private:

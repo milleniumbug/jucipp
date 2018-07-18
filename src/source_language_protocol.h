@@ -121,8 +121,7 @@ namespace Source {
     void setup_autocomplete();
     std::vector<std::string> autocomplete_comment;
     std::vector<std::string> autocomplete_insert;
-    std::list<std::pair<Glib::RefPtr<Gtk::TextBuffer::Mark>, Glib::RefPtr<Gtk::TextBuffer::Mark>>> autocomplete_marks;
-    bool autocomplete_keep_marks = false;
+    std::list<std::pair<Glib::RefPtr<Gtk::TextBuffer::Mark>, Glib::RefPtr<Gtk::TextBuffer::Mark>>> argument_marks;
 
     boost::filesystem::path flow_coverage_executable;
     std::vector<std::pair<Glib::RefPtr<Gtk::TextMark>, Glib::RefPtr<Gtk::TextMark>>> flow_coverage_marks;

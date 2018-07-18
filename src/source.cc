@@ -2439,6 +2439,14 @@ bool Source::View::on_key_press_event_smart_brackets(GdkEventKey *key) {
 }
 
 bool Source::View::on_key_press_event_smart_inserts(GdkEventKey *key) {
+  class Guard {
+  public:
+    bool &value;
+    Guard(bool &value_) : value(value_) { value = true; }
+    ~Guard() { value = false; }
+  };
+  Guard guard{keep_argument_marks};
+
   if(get_buffer()->get_has_selection()) {
     bool perform_insertion = false;
     char left_char, right_char;
