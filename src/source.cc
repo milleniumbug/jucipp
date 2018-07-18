@@ -1265,14 +1265,14 @@ Gtk::TextIter Source::View::get_start_of_expression(Gtk::TextIter iter) {
     return iter;
 
   bool has_semicolon = false;
-  bool colon_test = false;
+  bool has_open_curly = false;
 
   if(is_bracket_language) {
     if(*iter == ';' && is_code_iter(iter))
       has_semicolon = true;
     if(*iter == '{' && is_code_iter(iter)) {
       iter.backward_char();
-      colon_test = true;
+      has_open_curly = true;
     }
   }
 
@@ -1310,8 +1310,14 @@ Gtk::TextIter Source::View::get_start_of_expression(Gtk::TextIter iter) {
            test_iter.forward_char() && *test_iter == '<')
           continue;
       }
+      // Handle for instance: test\n  .test();
+      if(has_semicolon && use_fixed_continuation_indenting) {
+        auto test_iter = get_tabs_end_iter(iter);
+        if(!test_iter.starts_line() && *test_iter == '.' && is_code_iter(test_iter))
+          continue;
+      }
       // Handle : at the beginning of the sentence if iter initially started with {
-      if(colon_test) {
+      if(has_open_curly) {
         auto test_iter = get_tabs_end_iter(iter);
         if(!test_iter.starts_line() && *test_iter == ':' && is_code_iter(test_iter))
           continue;
@@ -1323,14 +1329,15 @@ Gtk::TextIter Source::View::get_start_of_expression(Gtk::TextIter iter) {
       }
       if(previous_iter.starts_line())
         return iter;
-      if(colon_test && *previous_iter == ':') {
+      // Handle for instance: Test::Test():\n    test(2) {
+      if(has_open_curly && *previous_iter == ':') {
         previous_iter.backward_char();
         while(!previous_iter.starts_line() && *previous_iter == ' ' && previous_iter.backward_char()) {
         }
         if(*previous_iter == ')') {
           auto token = get_token(get_tabs_end_iter(previous_iter));
           if(token != "case")
-            continue; // Continue at for instance: Test::Test():\n    test(2) {
+            continue;
         }
         return iter;
       }

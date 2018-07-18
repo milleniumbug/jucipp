@@ -2208,5 +2208,14 @@ int main() {
       iter.forward_to_line_end();
       g_assert(buffer->get_insert()->get_iter() == iter);
     }
+    {
+      buffer->set_text("  test\n"
+                       "    .test();");
+      view.on_key_press_event(&event);
+      g_assert(buffer->get_text() == "  test\n"
+                                     "    .test();\n"
+                                     "  ");
+      g_assert(buffer->get_insert()->get_iter() == buffer->end());
+    }
   }
 }
