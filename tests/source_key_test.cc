@@ -22,7 +22,6 @@ int main() {
     auto language = language_manager->get_language("cpp");
     Source::View view(source_file, language);
     view.get_source_buffer()->set_highlight_syntax(true);
-    view.get_source_buffer()->set_language(language);
     view.set_tab_char_and_size(' ', 2);
     auto buffer = view.get_buffer();
     event.keyval = GDK_KEY_Return;
@@ -2004,7 +2003,6 @@ int main() {
     auto language = language_manager->get_language("python");
     Source::View view(source_file, language);
     view.get_source_buffer()->set_highlight_syntax(true);
-    view.get_source_buffer()->set_language(language);
     view.set_tab_char_and_size(' ', 2);
     auto buffer = view.get_buffer();
     event.keyval = GDK_KEY_Return;
@@ -2022,7 +2020,6 @@ int main() {
     auto language = language_manager->get_language("js");
     Source::View view(source_file, language);
     view.get_source_buffer()->set_highlight_syntax(true);
-    view.get_source_buffer()->set_language(language);
     view.set_tab_char_and_size(' ', 2);
     auto buffer = view.get_buffer();
     event.keyval = GDK_KEY_Return;
@@ -2272,6 +2269,43 @@ int main() {
                                      "    .test();\n"
                                      "  ");
       g_assert(buffer->get_insert()->get_iter() == buffer->end());
+    }
+  }
+  {
+    auto language = language_manager->get_language("markdown");
+    Source::View view(source_file, language);
+    view.spellcheck_all = true;
+    view.get_source_buffer()->set_highlight_syntax(true);
+    view.set_tab_char_and_size(' ', 2);
+    auto buffer = view.get_buffer();
+    event.keyval = GDK_KEY_Return;
+    {
+      buffer->set_text("\n"
+                       "    * [test](https://test.org)\n");
+      while(Gtk::Main::events_pending())
+        Gtk::Main::iteration(false);
+      auto iter = buffer->get_iter_at_line(1);
+      iter.forward_to_line_end();
+      buffer->place_cursor(iter);
+      view.on_key_press_event(&event);
+      g_assert(buffer->get_text() == "\n"
+                                     "    * [test](https://test.org)\n"
+                                     "    \n");
+      iter = buffer->get_iter_at_line(2);
+      iter.forward_to_line_end();
+      g_assert(buffer->get_insert()->get_iter() == iter);
+    }
+    {
+      buffer->set_text("\n"
+                       "    * [test](https://test.org)");
+      while(Gtk::Main::events_pending())
+        Gtk::Main::iteration(false);
+      view.on_key_press_event(&event);
+      g_assert(buffer->get_text() == "\n"
+                                     "    * [test](https://test.org)\n"
+                                     "    ");
+      auto iter = buffer->end();
+      g_assert(buffer->get_insert()->get_iter() == iter);
     }
   }
 }

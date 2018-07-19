@@ -16,6 +16,19 @@ Source::BaseView::BaseView(const boost::filesystem::path &file_path, const Glib:
   });
 
   monitor_file();
+
+  if(language) {
+    get_source_buffer()->set_language(language);
+    auto language_id = language->get_id();
+    if(language_id == "chdr" || language_id == "cpphdr" || language_id == "c" ||
+       language_id == "cpp" || language_id == "objc" || language_id == "java" ||
+       language_id == "js" || language_id == "ts" || language_id == "proto" ||
+       language_id == "c-sharp" || language_id == "html" || language_id == "cuda" ||
+       language_id == "php" || language_id == "rust" || language_id == "swift" ||
+       language_id == "go" || language_id == "scala" || language_id == "opencl" ||
+       language_id == "json" || language_id == "css")
+      is_bracket_language = true;
+  }
 }
 
 Source::BaseView::~BaseView() {

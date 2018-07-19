@@ -46,14 +46,14 @@ Source::SpellCheckView::SpellCheckView(const boost::filesystem::path &file_path,
       return;
     }
 
-    if(!is_code_iter(iter)) {
+    if(is_spellcheck_iter(iter)) {
       if(last_keyval == GDK_KEY_Return || last_keyval == GDK_KEY_KP_Enter) {
         auto previous_line_iter = iter;
         while(previous_line_iter.backward_char() && !previous_line_iter.ends_line()) {
         }
         if(previous_line_iter.backward_char()) {
           get_buffer()->remove_tag(spellcheck_error_tag, previous_line_iter, iter);
-          if(!is_code_iter(previous_line_iter)) {
+          if(is_spellcheck_iter(previous_line_iter)) {
             auto word = get_word(previous_line_iter);
             spellcheck_word(word.first, word.second);
           }
@@ -283,7 +283,7 @@ void Source::SpellCheckView::spellcheck() {
     }
   }
   else {
-    bool spell_check = !is_code_iter(iter);
+    bool spell_check = is_spellcheck_iter(iter);
     if(spell_check)
       begin_spellcheck_iter = iter;
     while(iter != get_buffer()->end()) {
@@ -334,16 +334,16 @@ void Source::SpellCheckView::goto_next_spellcheck_error() {
   Info::get().print("No spelling errors found in current buffer");
 }
 
-bool Source::SpellCheckView::is_code_iter(const Gtk::TextIter &iter) {
+bool Source::SpellCheckView::is_spellcheck_iter(const Gtk::TextIter &iter) {
   if(*iter == '\'') {
     auto previous_iter = iter;
     if(!iter.starts_line() && previous_iter.backward_char() && *previous_iter == '\'')
-      return false;
+      return true;
   }
   if(spellcheck_all) {
     if(no_spell_check_tag) {
       if(iter.has_tag(no_spell_check_tag) || iter.begins_tag(no_spell_check_tag) || iter.ends_tag(no_spell_check_tag))
-        return true;
+        return false;
       // workaround for gtksourceview bug
       if(iter.ends_line()) {
         auto previous_iter = iter;
@@ -352,7 +352,7 @@ bool Source::SpellCheckView::is_code_iter(const Gtk::TextIter &iter) {
             auto next_iter = iter;
             next_iter.forward_char();
             if(next_iter.begins_tag(no_spell_check_tag) || next_iter.is_end())
-              return true;
+              return false;
           }
         }
       }
@@ -360,14 +360,14 @@ bool Source::SpellCheckView::is_code_iter(const Gtk::TextIter &iter) {
       if(*iter == '\'' || *iter == '"') {
         auto previous_iter = iter;
         if(previous_iter.backward_char() && *previous_iter != '\'' && *previous_iter != '\"' && previous_iter.ends_tag(no_spell_check_tag))
-          return true;
+          return false;
       }
     }
-    return false;
+    return true;
   }
   if(comment_tag) {
     if(iter.has_tag(comment_tag) && !iter.begins_tag(comment_tag))
-      return false;
+      return true;
     //Exception at the end of /**/
     else if(iter.ends_tag(comment_tag)) {
       auto previous_iter = iter;
@@ -379,32 +379,15 @@ bool Source::SpellCheckView::is_code_iter(const Gtk::TextIter &iter) {
           }
           auto next_iter = it;
           if(it.begins_tag(comment_tag) && next_iter.forward_char() && *it == '/' && *next_iter == '*' && previous_iter != it)
-            return true;
+            return false;
         }
       }
-      return false;
+      return true;
     }
   }
   if(string_tag) {
-    if(iter.has_tag(string_tag)) {
-      // When ending an open ''-string with ', the last '-iter is not correctly marked as end iter for string_tag
-      // For instance 'test, when inserting ' at end, would lead to spellcheck error of test'
-      if(*iter == '\'') {
-        long backslash_count = 0;
-        auto it = iter;
-        while(it.backward_char() && *it == '\\')
-          ++backslash_count;
-        if(backslash_count % 2 == 0) {
-          auto it = iter;
-          while(!it.begins_tag(string_tag) && it.backward_to_tag_toggle(string_tag)) {
-          }
-          if(it.begins_tag(string_tag) && *it == '\'' && iter != it)
-            return true;
-        }
-      }
-      if(!iter.begins_tag(string_tag))
-        return false;
-    }
+    if(iter.has_tag(string_tag) && !iter.begins_tag(string_tag))
+      return true;
     // If iter is at the end of string_tag, with exception of after " and '
     else if(iter.ends_tag(string_tag)) {
       auto previous_iter = iter;
@@ -419,32 +402,62 @@ bool Source::SpellCheckView::is_code_iter(const Gtk::TextIter &iter) {
             while(!it.begins_tag(string_tag) && it.backward_to_tag_toggle(string_tag)) {
             }
             if(it.begins_tag(string_tag) && *previous_iter == *it && previous_iter != it)
-              return true;
+              return false;
           }
         }
-        return false;
+        return true;
       }
     }
   }
-  return true;
+  return false;
 }
 
-bool Source::SpellCheckView::is_comment_iter(const Gtk::TextIter &iter) {
-  if(!comment_tag)
-    return false;
-  if(iter.has_tag(comment_tag))
-    return true;
-#if GTKMM_MAJOR_VERSION > 3 || (GTKMM_MAJOR_VERSION == 3 && GTKMM_MINOR_VERSION >= 20)
-  if(iter.starts_tag(comment_tag))
-    return true;
-#else
-  if(*iter == '/') {
-    auto next_iter = iter;
-    if(!next_iter.ends_line() && next_iter.forward_char() && next_iter.has_tag(comment_tag))
+bool Source::SpellCheckView::is_code_iter(const Gtk::TextIter &iter) {
+  // Returns true, for instance for C++, if iter is at either characters of // or /*
+  const auto is_comment_iter = [this](const Gtk::TextIter &iter) {
+    if(!comment_tag)
+      return false;
+    if(iter.has_tag(comment_tag))
       return true;
-  }
+#if GTKMM_MAJOR_VERSION > 3 || (GTKMM_MAJOR_VERSION == 3 && GTKMM_MINOR_VERSION >= 20)
+    if(iter.starts_tag(comment_tag))
+      return true;
+#else
+    if(*iter == '/') {
+      auto next_iter = iter;
+      if(!next_iter.ends_line() && next_iter.forward_char() && next_iter.has_tag(comment_tag))
+        return true;
+    }
 #endif
-  return false;
+    return false;
+  };
+
+  if(is_comment_iter(iter))
+    return false;
+
+  bool is_code_iter = !is_spellcheck_iter(iter);
+
+  // Treat closing " or ' as code iters
+  if(!is_code_iter && (*iter == '\'' || *iter == '"')) {
+    if(comment_tag && iter.ends_tag(comment_tag)) // ' or " at end of comments are not code iters
+      return false;
+    auto next_iter = iter;
+    next_iter.forward_char();
+    return !is_spellcheck_iter(next_iter);
+  }
+
+  if(is_bracket_language)
+    return is_code_iter;
+
+  // Non-bracket languages can have code iters inside (), [] and {}, while non-code iters outside of these brackets
+  // Do not threat these closing code brackets as code iters
+  if(is_code_iter && (*iter == ')' || *iter == ']' || *iter == '}')) {
+    auto next_iter = iter;
+    next_iter.forward_char();
+    return !is_spellcheck_iter(next_iter);
+  }
+
+  return is_code_iter;
 }
 
 bool Source::SpellCheckView::is_word_iter(const Gtk::TextIter &iter) {
@@ -456,15 +469,8 @@ bool Source::SpellCheckView::is_word_iter(const Gtk::TextIter &iter) {
     return false;
   if(((*iter >= 'A' && *iter <= 'Z') || (*iter >= 'a' && *iter <= 'z') || *iter >= 128))
     return true;
-  if(*iter == '\'') {
-    if(is_code_iter(iter))
-      return false;
-    auto next_iter = iter;
-    if(next_iter.forward_char() && is_code_iter(next_iter) &&
-       !(comment_tag && iter.ends_tag(comment_tag))) // additional check for end of line comment
-      return false;
-    return true;
-  }
+  if(*iter == '\'')
+    return !is_code_iter(iter);
   return false;
 }
 

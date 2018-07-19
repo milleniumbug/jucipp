@@ -52,6 +52,8 @@ namespace Source {
     void monitor_file();
     void check_last_write_time(std::time_t last_write_time_ = static_cast<std::time_t>(-1));
 
+    bool is_bracket_language = false;
+
     /// Move iter to line start. Depending on iter position, before or after indentation.
     /// Works with wrapped lines.
     Gtk::TextIter get_smart_home_iter(const Gtk::TextIter &iter);

@@ -16,9 +16,13 @@ namespace Source {
     void goto_next_spellcheck_error();
 
   protected:
+    /// For instance, the iter before a closing " is a spellcheck iter, while an opening " is not a spellcheck iter.
+    /// Otherwise, strings and comments should return true.
+    bool is_spellcheck_iter(const Gtk::TextIter &iter);
+    /// For instance, both opening and closing " are code iters.
+    /// None of the comment characters, for instance //, are code iters.
+    /// Otherwise, strings and comments should return false.
     bool is_code_iter(const Gtk::TextIter &iter);
-    /// Returns true, for instance for C++, if iter is at either characters of // or /*
-    bool is_comment_iter(const Gtk::TextIter &iter);
     bool spellcheck_all = false;
     guint last_keyval = 0;
 
