@@ -1250,8 +1250,6 @@ void Source::View::hide_dialogs() {
 Gtk::TextIter Source::View::find_non_whitespace_code_iter_backward(Gtk::TextIter iter) {
   if(iter.starts_line())
     return iter;
-  if(!comment_tag)
-    return iter;
   while(!iter.starts_line() && (is_comment_iter(iter) || *iter == ' ' || *iter == '\t' || iter.ends_line()) && iter.backward_char()) {
   }
   return iter;
