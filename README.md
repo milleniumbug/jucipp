@@ -33,7 +33,7 @@ towards libclang with speed, stability, and ease of use in mind.
 * OpenCL and CUDA files are supported and parsed as C++
 * Other file types:
     * Language server protocol support is enabled if `[language identifier]-language-server` executable is found. This executable can be a symbolic link to one of your installed language server binaries.
-See [language-server-protocol/specification.md](https://github.com/Microsoft/language-server-protocol/blob/gh-pages/specification.md) for the currently defined language identifiers.
+        * For additional instructions, see: [setup of tested language servers](docs/language_servers.md)
     * otherwise, only keyword and buffer completion supported
 * Find symbol through Ctags
 * Spell checking depending on file context
