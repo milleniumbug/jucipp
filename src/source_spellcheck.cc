@@ -341,25 +341,27 @@ bool Source::SpellCheckView::is_code_iter(const Gtk::TextIter &iter) {
       return false;
   }
   if(spellcheck_all) {
-    if(no_spell_check_tag && (iter.has_tag(no_spell_check_tag) || iter.begins_tag(no_spell_check_tag) || iter.ends_tag(no_spell_check_tag)))
-      return true;
-    // workaround for gtksourceview bug
-    if(iter.ends_line()) {
-      auto previous_iter = iter;
-      if(previous_iter.backward_char()) {
-        if(*previous_iter == '\'' || *previous_iter == '"') {
-          auto next_iter = iter;
-          next_iter.forward_char();
-          if(next_iter.begins_tag(no_spell_check_tag) || next_iter.is_end())
-            return true;
+    if(no_spell_check_tag) {
+      if(iter.has_tag(no_spell_check_tag) || iter.begins_tag(no_spell_check_tag) || iter.ends_tag(no_spell_check_tag))
+        return true;
+      // workaround for gtksourceview bug
+      if(iter.ends_line()) {
+        auto previous_iter = iter;
+        if(previous_iter.backward_char()) {
+          if(*previous_iter == '\'' || *previous_iter == '"') {
+            auto next_iter = iter;
+            next_iter.forward_char();
+            if(next_iter.begins_tag(no_spell_check_tag) || next_iter.is_end())
+              return true;
+          }
         }
       }
-    }
-    // for example, mark first " as code iter in this case: r""
-    if(*iter == '\'' || *iter == '"') {
-      auto previous_iter = iter;
-      if(previous_iter.backward_char() && *previous_iter != '\'' && *previous_iter != '\"' && previous_iter.ends_tag(no_spell_check_tag))
-        return true;
+      // for example, mark first " as code iter in this case: r""
+      if(*iter == '\'' || *iter == '"') {
+        auto previous_iter = iter;
+        if(previous_iter.backward_char() && *previous_iter != '\'' && *previous_iter != '\"' && previous_iter.ends_tag(no_spell_check_tag))
+          return true;
+      }
     }
     return false;
   }
