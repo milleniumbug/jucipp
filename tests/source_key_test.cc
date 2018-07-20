@@ -2105,6 +2105,22 @@ int main() {
       g_assert(buffer->get_insert()->get_iter() == iter);
     }
     {
+      buffer->set_text("    if(true)\n"
+                       "      ;\n"
+                       "\n"
+                       "\n");
+      auto iter = buffer->get_iter_at_line(3);
+      buffer->place_cursor(iter);
+      view.on_key_press_event(&event);
+      g_assert(buffer->get_text() == "    if(true)\n"
+                                     "      ;\n"
+                                     "\n"
+                                     "    \n");
+      iter = buffer->get_iter_at_line(3);
+      iter.forward_to_line_end();
+      g_assert(buffer->get_insert()->get_iter() == iter);
+    }
+    {
       view.set_tab_char_and_size('\t', 1);
       buffer->set_text("\t\tif(true)\n"
                        "\t\t\t;\n"

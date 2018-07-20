@@ -2334,7 +2334,8 @@ bool Source::View::on_key_press_event_bracket_language(GdkEventKey *key) {
     else if(iter.starts_line() && iter.ends_line() && !get_buffer()->get_has_selection()) {
       // Indenting after for instance: if(...)\n...;\n
       auto condition_iter = iter;
-      condition_iter.backward_char();
+      while(condition_iter.starts_line() && condition_iter.backward_char()) {
+      }
       condition_iter = find_non_whitespace_code_iter_backward(condition_iter);
       if(*condition_iter == ';' && condition_iter.get_line() > 0 && is_code_iter(condition_iter)) {
         auto start_iter = get_start_of_expression(condition_iter);
