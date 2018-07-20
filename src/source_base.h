@@ -28,6 +28,7 @@ namespace Source {
     virtual void hide_tooltips() = 0;
     virtual void hide_dialogs() = 0;
 
+    /// Use with care, view could be destroyed while this functions is running!
     std::function<void(BaseView *view, bool center, bool show_tooltips)> scroll_to_cursor_delayed = [](BaseView *view, bool center, bool show_tooltips) {};
 
     /// Safely returns iter given line and an offset using either byte index or character offset. Defaults to using byte index.

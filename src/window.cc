@@ -840,7 +840,6 @@ void Window::set_menu_actions() {
         auto view = Notebook::get().get_current_view();
         view->place_cursor_at_line_pos(location.line, location.index);
         view->scroll_to_cursor_delayed(view, true, false);
-        view->hide_tooltips();
       };
       view->hide_tooltips();
       SelectionDialog::get()->show();
@@ -900,7 +899,6 @@ void Window::set_menu_actions() {
             auto view = Notebook::get().get_current_view();
             view->place_cursor_at_line_pos(offset.line, offset.index);
             view->scroll_to_cursor_delayed(view, true, false);
-            view->hide_tooltips();
           };
           view->hide_tooltips();
           SelectionDialog::get()->show();

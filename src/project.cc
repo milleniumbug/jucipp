@@ -237,7 +237,6 @@ void Project::Base::show_symbols() {
     auto view = Notebook::get().get_current_view();
     view->place_cursor_at_line_index(offset.line, offset.index);
     view->scroll_to_cursor_delayed(view, true, false);
-    view->hide_tooltips();
   };
   if(view)
     view->hide_tooltips();
@@ -755,7 +754,6 @@ void Project::LanguageProtocol::show_symbols() {
     auto view = Notebook::get().get_current_view();
     view->place_cursor_at_line_offset(offset.line, offset.index);
     view->scroll_to_cursor_delayed(view, true, false);
-    view->hide_tooltips();
   };
 
   if(view)

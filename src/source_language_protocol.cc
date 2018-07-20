@@ -509,11 +509,11 @@ void Source::LanguageProtocolView::setup_navigation_and_refactoring() {
       result_processed.get_future().get();
 
       auto end_iter = get_buffer()->end();
+      // If entire buffer is replaced:
       if(replaces.size() == 1 &&
          replaces[0].start.line == 0 && replaces[0].start.index == 0 &&
          (replaces[0].end.line > static_cast<unsigned>(end_iter.get_line()) ||
           (replaces[0].end.line == static_cast<unsigned>(end_iter.get_line()) && replaces[0].end.index >= static_cast<unsigned>(end_iter.get_line_offset())))) {
-        unescape_text(replaces[0].text);
         replace_text(replaces[0].text);
       }
       else {
@@ -523,7 +523,6 @@ void Source::LanguageProtocolView::setup_navigation_and_refactoring() {
           auto end = get_iter_at_line_pos(it->end.line, it->end.index);
           get_buffer()->erase(start, end);
           start = get_iter_at_line_pos(it->start.line, it->start.index);
-          unescape_text(it->text);
           get_buffer()->insert(start, it->text);
         }
         get_buffer()->end_user_action();
@@ -784,26 +783,30 @@ void Source::LanguageProtocolView::setup_navigation_and_refactoring() {
           }
         }
         if(view_it != views.end()) {
-          (*view_it)->get_buffer()->begin_user_action();
-          auto iter = get_buffer()->get_insert()->get_iter();
-          auto line = iter.get_line();
-          auto offset = iter.get_line_offset();
-          for(auto offset_it = usage.offsets.rbegin(); offset_it != usage.offsets.rend(); ++offset_it) {
-            auto start_iter = (*view_it)->get_iter_at_line_pos(offset_it->first.line, offset_it->first.index);
-            auto end_iter = (*view_it)->get_iter_at_line_pos(offset_it->second.line, offset_it->second.index);
-            (*view_it)->get_buffer()->erase(start_iter, end_iter);
-            start_iter = (*view_it)->get_iter_at_line_pos(offset_it->first.line, offset_it->first.index);
-            if(usage.new_text)
-              (*view_it)->get_buffer()->insert(start_iter, *usage.new_text);
-            else
-              (*view_it)->get_buffer()->insert(start_iter, text);
+          auto buffer = (*view_it)->get_buffer();
+          buffer->begin_user_action();
+
+          auto end_iter = buffer->end();
+          // If entire buffer is replaced
+          if(usage.new_text && usage.offsets.size() == 1 &&
+             usage.offsets[0].first.line == 0 && usage.offsets[0].first.index == 0 &&
+             (usage.offsets[0].second.line > static_cast<unsigned>(end_iter.get_line()) ||
+              (usage.offsets[0].second.line == static_cast<unsigned>(end_iter.get_line()) && usage.offsets[0].second.index >= static_cast<unsigned>(end_iter.get_line_offset()))))
+            replace_text(*usage.new_text);
+          else {
+            for(auto offset_it = usage.offsets.rbegin(); offset_it != usage.offsets.rend(); ++offset_it) {
+              auto start_iter = (*view_it)->get_iter_at_line_pos(offset_it->first.line, offset_it->first.index);
+              auto end_iter = (*view_it)->get_iter_at_line_pos(offset_it->second.line, offset_it->second.index);
+              buffer->erase(start_iter, end_iter);
+              start_iter = (*view_it)->get_iter_at_line_pos(offset_it->first.line, offset_it->first.index);
+              if(usage.new_text)
+                buffer->insert(start_iter, *usage.new_text);
+              else
+                buffer->insert(start_iter, text);
+            }
           }
-          if(usage.new_text && get_buffer()->get_insert()->get_iter().is_end()) {
-            place_cursor_at_line_offset(line, offset);
-            hide_tooltips();
-            scroll_to_cursor_delayed(this, true, false);
-          }
-          (*view_it)->get_buffer()->end_user_action();
+
+          buffer->end_user_action();
           (*view_it)->save();
           usages_renamed.emplace_back(&usage);
         }
@@ -872,22 +875,13 @@ void Source::LanguageProtocolView::escape_text(std::string &text) {
       text.replace(c, 1, "\\r");
       ++c;
     }
-    else if(text[c] == '\"') {
+    else if(text[c] == '"') {
       text.replace(c, 1, "\\\"");
       ++c;
     }
-  }
-}
-
-void Source::LanguageProtocolView::unescape_text(std::string &text) {
-  for(size_t c = 0; c < text.size(); ++c) {
-    if(text[c] == '\\' && c + 1 < text.size()) {
-      if(text[c + 1] == 'n')
-        text.replace(c, 2, "\n");
-      else if(text[c + 1] == 'r')
-        text.replace(c, 2, "\r");
-      else
-        text.erase(c, 1);
+    else if(text[c] == '\\') {
+      text.replace(c, 1, "\\\\");
+      ++c;
     }
   }
 }

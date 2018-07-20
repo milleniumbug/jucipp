@@ -240,9 +240,11 @@ SelectionDialog::SelectionDialog(Gtk::TextView *text_view, const Glib::RefPtr<Gt
     if(on_select && it) {
       auto index = it->get_value(list_view_text.column_record.index);
       auto text = it->get_value(list_view_text.column_record.text);
+      hide();
       on_select(index, text, true);
     }
-    hide();
+    else
+      hide();
   };
   search_entry.signal_activate().connect([activate]() {
     activate();

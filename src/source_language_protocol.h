@@ -111,7 +111,6 @@ namespace Source {
     void setup_navigation_and_refactoring();
 
     void escape_text(std::string &text);
-    void unescape_text(std::string &text);
 
     void tag_similar_symbols();
 
