@@ -19,6 +19,150 @@ int main() {
   event.state = 0;
 
   {
+    auto language = language_manager->get_language("js");
+    Source::View view(source_file, language);
+    view.get_source_buffer()->set_highlight_syntax(true);
+    view.set_tab_char_and_size(' ', 2);
+    auto buffer = view.get_buffer();
+    {
+      buffer->set_text("  ''\n");
+      while(Gtk::Main::events_pending())
+        Gtk::Main::iteration(false);
+      auto iter = buffer->get_iter_at_line(0);
+      iter.forward_chars(3);
+      assert(view.is_spellcheck_iter(iter));
+      assert(view.is_code_iter(iter));
+    }
+    {
+      buffer->set_text("  \"\"\n");
+      while(Gtk::Main::events_pending())
+        Gtk::Main::iteration(false);
+      auto iter = buffer->get_iter_at_line(0);
+      iter.forward_chars(3);
+      assert(view.is_spellcheck_iter(iter));
+      assert(view.is_code_iter(iter));
+    }
+    {
+      buffer->set_text("  'test\n");
+      while(Gtk::Main::events_pending())
+        Gtk::Main::iteration(false);
+      auto iter = buffer->get_iter_at_line(0);
+      iter.forward_to_line_end();
+      assert(view.is_spellcheck_iter(iter));
+      assert(!view.is_code_iter(iter));
+    }
+    {
+      buffer->set_text("  \"test'\n");
+      while(Gtk::Main::events_pending())
+        Gtk::Main::iteration(false);
+      auto iter = buffer->get_iter_at_line(0);
+      iter.forward_to_line_end();
+      iter.backward_char();
+      assert(view.is_spellcheck_iter(iter));
+      assert(!view.is_code_iter(iter));
+      iter.forward_char();
+      assert(view.is_spellcheck_iter(iter));
+      assert(!view.is_code_iter(iter));
+    }
+    {
+      buffer->set_text("  'test'\n");
+      while(Gtk::Main::events_pending())
+        Gtk::Main::iteration(false);
+      auto iter = buffer->get_iter_at_line(0);
+      iter.forward_chars(2);
+      assert(!view.is_spellcheck_iter(iter));
+      assert(view.is_code_iter(iter));
+      iter.forward_char();
+      assert(view.is_spellcheck_iter(iter));
+      assert(!view.is_code_iter(iter));
+      iter.forward_chars(4);
+      assert(view.is_spellcheck_iter(iter));
+      assert(view.is_code_iter(iter));
+      iter.forward_char();
+      assert(!view.is_spellcheck_iter(iter));
+      assert(view.is_code_iter(iter));
+    }
+    {
+      buffer->set_text("  \"test\"\n");
+      while(Gtk::Main::events_pending())
+        Gtk::Main::iteration(false);
+      auto iter = buffer->get_iter_at_line(0);
+      iter.forward_chars(2);
+      assert(!view.is_spellcheck_iter(iter));
+      assert(view.is_code_iter(iter));
+      iter.forward_char();
+      assert(view.is_spellcheck_iter(iter));
+      assert(!view.is_code_iter(iter));
+      iter.forward_chars(4);
+      assert(view.is_spellcheck_iter(iter));
+      assert(view.is_code_iter(iter));
+      iter.forward_char();
+      assert(!view.is_spellcheck_iter(iter));
+      assert(view.is_code_iter(iter));
+    }
+    {
+      buffer->set_text("  '\\''\n");
+      while(Gtk::Main::events_pending())
+        Gtk::Main::iteration(false);
+      auto iter = buffer->get_iter_at_line(0);
+      iter.forward_chars(2);
+      assert(!view.is_spellcheck_iter(iter));
+      assert(view.is_code_iter(iter));
+      iter.forward_char();
+      assert(view.is_spellcheck_iter(iter));
+      assert(!view.is_code_iter(iter));
+      iter.forward_char();
+      assert(view.is_spellcheck_iter(iter));
+      assert(!view.is_code_iter(iter));
+      iter.forward_char();
+      assert(view.is_spellcheck_iter(iter));
+      assert(view.is_code_iter(iter));
+      iter.forward_char();
+      assert(!view.is_spellcheck_iter(iter));
+      assert(view.is_code_iter(iter));
+    }
+    {
+      buffer->set_text("  /**/\n");
+      while(Gtk::Main::events_pending())
+        Gtk::Main::iteration(false);
+      auto iter = buffer->get_iter_at_line(0);
+      iter.forward_chars(2);
+      assert(!view.is_spellcheck_iter(iter));
+      assert(!view.is_code_iter(iter));
+      iter.forward_char();
+      assert(view.is_spellcheck_iter(iter));
+      assert(!view.is_code_iter(iter));
+      iter.forward_char();
+      assert(view.is_spellcheck_iter(iter));
+      assert(!view.is_code_iter(iter));
+      iter.forward_char();
+      assert(view.is_spellcheck_iter(iter));
+      assert(!view.is_code_iter(iter));
+      iter.forward_char();
+      assert(!view.is_spellcheck_iter(iter));
+      assert(view.is_code_iter(iter));
+    }
+    {
+      buffer->set_text("  //t\n");
+      while(Gtk::Main::events_pending())
+        Gtk::Main::iteration(false);
+      auto iter = buffer->get_iter_at_line(0);
+      iter.forward_chars(2);
+      assert(!view.is_spellcheck_iter(iter));
+      assert(!view.is_code_iter(iter));
+      iter.forward_char();
+      assert(view.is_spellcheck_iter(iter));
+      assert(!view.is_code_iter(iter));
+      iter.forward_char();
+      assert(view.is_spellcheck_iter(iter));
+      assert(!view.is_code_iter(iter));
+      iter.forward_char();
+      assert(view.is_spellcheck_iter(iter));
+      assert(!view.is_code_iter(iter));
+    }
+  }
+
+  {
     auto language = language_manager->get_language("cpp");
     Source::View view(source_file, language);
     view.get_source_buffer()->set_highlight_syntax(true);

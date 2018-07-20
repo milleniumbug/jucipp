@@ -335,9 +335,9 @@ void Source::SpellCheckView::goto_next_spellcheck_error() {
 }
 
 bool Source::SpellCheckView::is_spellcheck_iter(const Gtk::TextIter &iter) {
-  if(*iter == '\'') {
+  if(*iter == '\'') { // Handle iter inside ''
     auto previous_iter = iter;
-    if(!iter.starts_line() && previous_iter.backward_char() && *previous_iter == '\'')
+    if(previous_iter.backward_char() && *previous_iter == '\'')
       return true;
   }
   if(spellcheck_all) {
@@ -356,7 +356,7 @@ bool Source::SpellCheckView::is_spellcheck_iter(const Gtk::TextIter &iter) {
           }
         }
       }
-      // for example, mark first " as code iter in this case: r""
+      // for example, mark first " as not spellcheck iter in this case: r""
       if(*iter == '\'' || *iter == '"') {
         auto previous_iter = iter;
         if(previous_iter.backward_char() && *previous_iter != '\'' && *previous_iter != '\"' && previous_iter.ends_tag(no_spell_check_tag))
@@ -374,12 +374,12 @@ bool Source::SpellCheckView::is_spellcheck_iter(const Gtk::TextIter &iter) {
       if(previous_iter.backward_char() && *previous_iter == '/') {
         auto previous_previous_iter = previous_iter;
         if(previous_previous_iter.backward_char() && *previous_previous_iter == '*') {
-          auto it = previous_iter;
-          while(!it.begins_tag(comment_tag) && it.backward_to_tag_toggle(comment_tag)) {
+          auto start_iter = iter;
+          if(start_iter.backward_to_tag_toggle(comment_tag)) {
+            auto next_iter = start_iter;
+            if(start_iter.begins_tag(comment_tag) && next_iter.forward_char() && *start_iter == '/' && *next_iter == '*')
+              return false;
           }
-          auto next_iter = it;
-          if(it.begins_tag(comment_tag) && next_iter.forward_char() && *it == '/' && *next_iter == '*' && previous_iter != it)
-            return false;
         }
       }
       return true;
@@ -391,22 +391,18 @@ bool Source::SpellCheckView::is_spellcheck_iter(const Gtk::TextIter &iter) {
     // If iter is at the end of string_tag, with exception of after " and '
     else if(iter.ends_tag(string_tag)) {
       auto previous_iter = iter;
-      if(!iter.starts_line() && previous_iter.backward_char()) {
-        if((*previous_iter == '"' || *previous_iter == '\'')) {
-          long backslash_count = 0;
-          auto it = previous_iter;
-          while(it.backward_char() && *it == '\\')
-            ++backslash_count;
-          if(backslash_count % 2 == 0) {
-            auto it = previous_iter;
-            while(!it.begins_tag(string_tag) && it.backward_to_tag_toggle(string_tag)) {
-            }
-            if(it.begins_tag(string_tag) && *previous_iter == *it && previous_iter != it)
-              return false;
-          }
+      if(previous_iter.backward_char() && (*previous_iter == '"' || *previous_iter == '\'')) {
+        long backslash_count = 0;
+        auto it = previous_iter;
+        while(it.backward_char() && *it == '\\')
+          ++backslash_count;
+        if(backslash_count % 2 == 0) {
+          auto start_iter = iter;
+          if(start_iter.backward_to_tag_toggle(string_tag) && start_iter.begins_tag(string_tag) && *previous_iter == *start_iter)
+            return false;
         }
-        return true;
       }
+      return true;
     }
   }
   return false;
@@ -441,9 +437,29 @@ bool Source::SpellCheckView::is_code_iter(const Gtk::TextIter &iter) {
   if(!is_code_iter && (*iter == '\'' || *iter == '"')) {
     if(comment_tag && iter.ends_tag(comment_tag)) // ' or " at end of comments are not code iters
       return false;
-    auto next_iter = iter;
-    next_iter.forward_char();
-    return !is_spellcheck_iter(next_iter);
+    if(*iter == '"') {
+      auto next_iter = iter;
+      next_iter.forward_char();
+      return !is_spellcheck_iter(next_iter);
+    }
+    // Have to look up ' manually since it can be a word iter:
+    auto previous_iter = iter;
+    if(previous_iter.backward_char() && *previous_iter == '\'') { // First, handle iter inside '':
+      auto next_iter = iter;
+      next_iter.forward_char();
+      return !is_spellcheck_iter(next_iter);
+    }
+    if(string_tag && (iter.has_tag(string_tag) || iter.ends_tag(string_tag))) {
+      long backslash_count = 0;
+      auto previous_iter = iter;
+      while(previous_iter.backward_char() && *previous_iter == '\\')
+        ++backslash_count;
+      if(backslash_count % 2 == 0) {
+        auto start_iter = iter;
+        if(start_iter.backward_to_tag_toggle(string_tag) && start_iter.begins_tag(string_tag) && *start_iter == '\'')
+          return true;
+      }
+    }
   }
 
   if(is_bracket_language)
@@ -502,7 +518,9 @@ void Source::SpellCheckView::spellcheck_word(Gtk::TextIter start, Gtk::TextIter 
   }
 
   auto word = get_buffer()->get_text(start, end);
-  if(word.size() > 0) {
+  if(word == "''")
+    get_buffer()->remove_tag(spellcheck_error_tag, start, end);
+  else if(word.size() > 0) {
     auto correct = aspell_speller_check(spellcheck_checker, word.data(), word.bytes());
     if(correct == 0)
       get_buffer()->apply_tag(spellcheck_error_tag, start, end);
