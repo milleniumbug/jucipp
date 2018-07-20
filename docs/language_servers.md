@@ -26,7 +26,7 @@ chmod 755 /usr/local/bin/javascript-language-server
   
 Install language server, and create symbolic link to enable server in juCi++:
 ```sh
-pip3 install python-language-server[rope,yapf]
+pip3 install python-language-server[rope,pycodestyle,yapf]
 
 ln -s pyls /usr/local/bin/python-language-server
 ```
