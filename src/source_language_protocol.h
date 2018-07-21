@@ -34,6 +34,7 @@ namespace LanguageProtocol {
     bool references;
     bool document_highlight;
     bool workspace_symbol;
+    bool document_symbol;
     bool document_formatting;
     bool document_range_formatting;
     bool rename;

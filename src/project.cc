@@ -683,12 +683,18 @@ void Project::LanguageProtocol::show_symbols() {
   auto client = ::LanguageProtocol::Client::get(*project_path, language_id);
   auto capabilities = client->initialize(nullptr);
 
-  if(!capabilities.workspace_symbol) {
+  auto view = Notebook::get().get_current_view();
+  auto language_protocol_view = dynamic_cast<Source::LanguageProtocolView *>(view);
+
+  if(!capabilities.workspace_symbol && !capabilities.document_symbol) {
+    Info::get().print("Language server does not support workspace/symbol or textDocument/documentSymbol");
+    return;
+  }
+  else if(!language_protocol_view && !capabilities.workspace_symbol) {
     Info::get().print("Language server does not support workspace/symbol");
     return;
   }
 
-  auto view = Notebook::get().get_current_view();
   if(view) {
     auto dialog_iter = view->get_iter_for_dialog();
     SelectionDialog::create(view, view->get_buffer()->create_mark(dialog_iter), true, true);
@@ -701,18 +707,56 @@ void Project::LanguageProtocol::show_symbols() {
   };
 
   auto offsets = std::make_shared<std::vector<Source::Offset>>();
-  SelectionDialog::get()->on_search_entry_changed = [client, project_path, offsets](const std::string &text) {
-    if(text.size() > 1)
-      return;
-    else {
-      offsets->clear();
-      SelectionDialog::get()->erase_rows();
-      if(text.empty())
+  if(capabilities.workspace_symbol) {
+    SelectionDialog::get()->on_search_entry_changed = [client, project_path, offsets](const std::string &text) {
+      if(text.size() > 1)
         return;
-    }
+      else {
+        offsets->clear();
+        SelectionDialog::get()->erase_rows();
+        if(text.empty())
+          return;
+      }
+      std::vector<std::string> names;
+      std::promise<void> result_processed;
+      client->write_request(nullptr, "workspace/symbol", R"("query":")" + text + '"', [&result_processed, &names, offsets, project_path](const boost::property_tree::ptree &result, bool error) {
+        if(!error) {
+          for(auto it = result.begin(); it != result.end(); ++it) {
+            auto name = it->second.get<std::string>("name", "");
+            if(!name.empty()) {
+              auto location_it = it->second.find("location");
+              if(location_it != it->second.not_found()) {
+                auto file = location_it->second.get<std::string>("uri", "");
+                if(file.size() > 7) {
+                  file.erase(0, 7);
+                  auto range_it = location_it->second.find("range");
+                  if(range_it != location_it->second.not_found()) {
+                    auto start_it = range_it->second.find("start");
+                    if(start_it != range_it->second.not_found()) {
+                      try {
+                        offsets->emplace_back(Source::Offset(start_it->second.get<unsigned>("line"), start_it->second.get<unsigned>("character"), file));
+                        names.emplace_back(name);
+                      }
+                      catch(...) {
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+        result_processed.set_value();
+      });
+      result_processed.get_future().get();
+      for(size_t c = 0; c < offsets->size() && c < names.size(); ++c)
+        SelectionDialog::get()->add_row(filesystem::get_relative_path((*offsets)[c].file_path, *project_path).string() + ':' + std::to_string((*offsets)[c].line + 1) + ':' + std::to_string((*offsets)[c].index + 1) + ": " + names[c]);
+    };
+  }
+  else {
     std::vector<std::string> names;
     std::promise<void> result_processed;
-    client->write_request(nullptr, "workspace/symbol", R"("query":")" + text + '"', [&result_processed, &names, offsets, project_path](const boost::property_tree::ptree &result, bool error) {
+    client->write_request(nullptr, "textDocument/documentSymbol", R"("textDocument":{"uri":")" + language_protocol_view->uri + "\"}", [&result_processed, &names, offsets, project_path](const boost::property_tree::ptree &result, bool error) {
       if(!error) {
         for(auto it = result.begin(); it != result.end(); ++it) {
           auto name = it->second.get<std::string>("name", "");
@@ -743,8 +787,8 @@ void Project::LanguageProtocol::show_symbols() {
     });
     result_processed.get_future().get();
     for(size_t c = 0; c < offsets->size() && c < names.size(); ++c)
-      SelectionDialog::get()->add_row(filesystem::get_relative_path((*offsets)[c].file_path, *project_path).string() + ':' + std::to_string((*offsets)[c].line + 1) + ':' + std::to_string((*offsets)[c].index + 1) + ": " + names[c]);
-  };
+      SelectionDialog::get()->add_row(std::to_string((*offsets)[c].line + 1) + ':' + std::to_string((*offsets)[c].index + 1) + ": " + names[c]);
+  }
 
   SelectionDialog::get()->on_select = [offsets](unsigned int index, const std::string &text, bool hide_window) {
     auto &offset = (*offsets)[index];

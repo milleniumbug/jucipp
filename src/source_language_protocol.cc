@@ -98,6 +98,7 @@ LanguageProtocol::Capabilities LanguageProtocol::Client::initialize(Source::Lang
         capabilities.references = capabilities_pt->second.get<bool>("referencesProvider", false);
         capabilities.document_highlight = capabilities_pt->second.get<bool>("documentHighlightProvider", false);
         capabilities.workspace_symbol = capabilities_pt->second.get<bool>("workspaceSymbolProvider", false);
+        capabilities.document_symbol = capabilities_pt->second.get<bool>("documentSymbolProvider", false);
         capabilities.document_formatting = capabilities_pt->second.get<bool>("documentFormattingProvider", false);
         capabilities.document_range_formatting = capabilities_pt->second.get<bool>("documentRangeFormattingProvider", false);
         capabilities.rename = capabilities_pt->second.get<bool>("renameProvider", false);
