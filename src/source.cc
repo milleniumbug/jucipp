@@ -223,18 +223,16 @@ Source::View::View(const boost::filesystem::path &file_path, const Glib::RefPtr<
   tab_char = Config::get().source.default_tab_char;
   tab_size = Config::get().source.default_tab_size;
   if(Config::get().source.auto_tab_char_and_size) {
-    auto tab_char_and_size = find_tab_char_and_size();
-    if(tab_char_and_size.second != 0) {
-      if(tab_char != tab_char_and_size.first || tab_size != tab_char_and_size.second) {
-        std::string tab_str;
-        if(tab_char_and_size.first == ' ')
-          tab_str = "<space>";
-        else
-          tab_str = "<tab>";
+    if(get_buffer()->size() == 0 && language && language->get_id() == "python") {
+      tab_char = ' ';
+      tab_size = 4;
+    }
+    else {
+      auto tab_char_and_size = find_tab_char_and_size();
+      if(tab_char_and_size.second != 0) {
+        tab_char = tab_char_and_size.first;
+        tab_size = tab_char_and_size.second;
       }
-
-      tab_char = tab_char_and_size.first;
-      tab_size = tab_char_and_size.second;
     }
   }
   set_tab_char_and_size(tab_char, tab_size);
