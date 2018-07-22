@@ -1708,7 +1708,7 @@ bool Source::View::on_key_press_event(GdkEventKey *key) {
 bool Source::View::on_key_press_event_basic(GdkEventKey *key) {
   auto iter = get_buffer()->get_insert()->get_iter();
 
-  // Indent as in current or previous line
+  // Indent as in current or next line
   if((key->keyval == GDK_KEY_Return || key->keyval == GDK_KEY_KP_Enter) && !get_buffer()->get_has_selection() && !iter.starts_line()) {
     cleanup_whitespace_characters_on_return(iter);
 
@@ -1727,11 +1727,12 @@ bool Source::View::on_key_press_event_basic(GdkEventKey *key) {
       return true;
     }
 
+    // Indent as in current or next line
     int line_nr = iter.get_line();
     if(iter.ends_line() && (line_nr + 1) < get_buffer()->get_line_count()) {
-      auto next_line_tabs = get_line_before(get_tabs_end_iter(line_nr + 1));
-      if(next_line_tabs.size() > tabs.size()) {
-        get_buffer()->insert_at_cursor('\n' + next_line_tabs);
+      auto next_tabs_end_iter = get_tabs_end_iter(line_nr + 1);
+      if(next_tabs_end_iter.get_line_offset() > tabs_end_iter.get_line_offset()) {
+        get_buffer()->insert_at_cursor('\n' + get_line_before(next_tabs_end_iter));
         scroll_to(get_buffer()->get_insert());
         return true;
       }
@@ -2244,6 +2245,9 @@ bool Source::View::on_key_press_event_bracket_language(GdkEventKey *key) {
             for(size_t c = 0; c < tab_size; c++)
               start_line_plus_tab_size.forward_char();
             get_buffer()->erase(start_line_iter, start_line_plus_tab_size);
+            get_buffer()->insert_at_cursor('\n' + tabs);
+            scroll_to(get_buffer()->get_insert());
+            return true;
           }
           else {
             get_buffer()->insert_at_cursor('\n' + tabs + tab);
@@ -2253,8 +2257,16 @@ bool Source::View::on_key_press_event_bracket_language(GdkEventKey *key) {
         }
       }
     }
-    if(use_fixed_continuation_indenting)
-      return false; // Use basic indentation since for instance JavaScript code can contain JSX
+    // Indent as in current or next line
+    int line_nr = iter.get_line();
+    if(iter.ends_line() && (line_nr + 1) < get_buffer()->get_line_count()) {
+      auto next_tabs_end_iter = get_tabs_end_iter(line_nr + 1);
+      if(next_tabs_end_iter.get_line_offset() > tabs_end_iter.get_line_offset()) {
+        get_buffer()->insert_at_cursor('\n' + get_line_before(next_tabs_end_iter));
+        scroll_to(get_buffer()->get_insert());
+        return true;
+      }
+    }
     get_buffer()->insert_at_cursor('\n' + tabs);
     scroll_to(get_buffer()->get_insert());
     return true;

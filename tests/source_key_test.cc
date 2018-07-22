@@ -1322,6 +1322,38 @@ int main() {
                                      "   ");
       g_assert(buffer->get_insert()->get_iter() == buffer->end());
     }
+    {
+      buffer->set_text("#test\n"
+                       "  test();");
+      while(Gtk::Main::events_pending())
+        Gtk::Main::iteration(false);
+      auto iter = buffer->get_iter_at_line(0);
+      iter.forward_to_line_end();
+      buffer->place_cursor(iter);
+      view.on_key_press_event(&event);
+      g_assert(buffer->get_text() == "#test\n"
+                                     "  \n"
+                                     "  test();");
+      iter = buffer->get_iter_at_line(1);
+      iter.forward_to_line_end();
+      g_assert(buffer->get_insert()->get_iter() == iter);
+    }
+    {
+      buffer->set_text("  #test\n"
+                       "    test();");
+      while(Gtk::Main::events_pending())
+        Gtk::Main::iteration(false);
+      auto iter = buffer->get_iter_at_line(0);
+      iter.forward_to_line_end();
+      buffer->place_cursor(iter);
+      view.on_key_press_event(&event);
+      g_assert(buffer->get_text() == "  #test\n"
+                                     "    \n"
+                                     "    test();");
+      iter = buffer->get_iter_at_line(1);
+      iter.forward_to_line_end();
+      g_assert(buffer->get_insert()->get_iter() == iter);
+    }
 
     {
       buffer->set_text("if('a'=='a')");
