@@ -7,12 +7,11 @@
 #ifdef JUCI_ENABLE_DEBUG
 #include "debug_lldb.h"
 #endif
+#include "config.h"
 #include "menu.h"
 #include <future>
 #include <limits>
 #include <regex>
-
-const bool output_messages_and_errors = false;
 
 LanguageProtocol::Client::Client(std::string root_uri_, std::string language_id_) : root_uri(std::move(root_uri_)), language_id(std::move(language_id_)) {
   process = std::make_unique<TinyProcessLib::Process>(language_id + "-language-server", root_uri, [this](const char *bytes, size_t n) {
@@ -69,7 +68,7 @@ LanguageProtocol::Client::~Client() {
     if(process->try_get_exit_status(exit_status))
       break;
   }
-  if(output_messages_and_errors)
+  if(Config::get().log.language_server)
     std::cout << "Language server exit status: " << exit_status << std::endl;
   if(exit_status == -1)
     process->kill();
@@ -176,7 +175,7 @@ void LanguageProtocol::Client::parse_server_message() {
       boost::property_tree::ptree pt;
       boost::property_tree::read_json(server_message_stream, pt);
 
-      if(output_messages_and_errors) {
+      if(Config::get().log.language_server) {
         std::cout << "language server: ";
         boost::property_tree::write_json(std::cout, pt);
       }
@@ -199,7 +198,7 @@ void LanguageProtocol::Client::parse_server_message() {
           }
         }
         else if(error_it != pt.not_found()) {
-          if(!output_messages_and_errors)
+          if(!Config::get().log.language_server)
             boost::property_tree::write_json(std::cerr, pt);
           if(message_id) {
             auto id_it = handlers.find(message_id);
@@ -267,7 +266,7 @@ void LanguageProtocol::Client::write_request(Source::LanguageProtocolView *view,
   }
   std::string content(R"({"jsonrpc":"2.0","id":)" + std::to_string(message_id++) + R"(,"method":")" + method + R"(","params":{)" + params + "}}");
   auto message = "Content-Length: " + std::to_string(content.size()) + "\r\n\r\n" + content;
-  if(output_messages_and_errors)
+  if(Config::get().log.language_server)
     std::cout << "Language client: " << content << std::endl;
   if(!process->write(message)) {
     Terminal::get().async_print("Error writing to language protocol server. Please close and reopen all project source files.\n", true);
@@ -286,7 +285,7 @@ void LanguageProtocol::Client::write_notification(const std::string &method, con
   std::unique_lock<std::mutex> lock(read_write_mutex);
   std::string content(R"({"jsonrpc":"2.0","method":")" + method + R"(","params":{)" + params + "}}");
   auto message = "Content-Length: " + std::to_string(content.size()) + "\r\n\r\n" + content;
-  if(output_messages_and_errors)
+  if(Config::get().log.language_server)
     std::cout << "Language client: " << content << std::endl;
   process->write(message);
 }

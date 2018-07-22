@@ -94,6 +94,11 @@ public:
     std::unordered_map<std::string, DocumentationSearch> documentation_searches;
   };
 
+  class Log {
+  public:
+    bool language_server;
+  };
+
 private:
   Config();
 
@@ -110,6 +115,7 @@ public:
   Terminal terminal;
   Project project;
   Source source;
+  Log log;
 
   boost::filesystem::path home_path;
   boost::filesystem::path home_juci_path;

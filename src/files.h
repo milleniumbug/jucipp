@@ -191,6 +191,9 @@ const std::string default_config_file = R"RAW({
                 "@any": "https://www.google.com/search?btnI&q="
             }
         }
+    },
+    "log": {
+        "language_server": false
     }
 }
 )RAW";
