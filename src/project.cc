@@ -141,10 +141,10 @@ std::shared_ptr<Project::Base> Project::create() {
       auto language_id = view->language->get_id();
       if(language_id == "markdown")
         return std::shared_ptr<Project::Base>(new Project::Markdown(std::move(build)));
-      if(language_id == "python")
-        return std::shared_ptr<Project::Base>(new Project::Python(std::move(build)));
       if(language_id == "js")
         return std::shared_ptr<Project::Base>(new Project::JavaScript(std::move(build)));
+      if(language_id == "python")
+        return std::shared_ptr<Project::Base>(new Project::Python(std::move(build)));
       if(language_id == "html")
         return std::shared_ptr<Project::Base>(new Project::HTML(std::move(build)));
     }
@@ -154,12 +154,13 @@ std::shared_ptr<Project::Base> Project::create() {
 
   if(dynamic_cast<CMakeBuild *>(build.get()) || dynamic_cast<MesonBuild *>(build.get()))
     return std::shared_ptr<Project::Base>(new Project::Clang(std::move(build)));
-  else if(dynamic_cast<CargoBuild *>(build.get()))
+  if(dynamic_cast<CargoBuild *>(build.get()))
     return std::shared_ptr<Project::Base>(new Project::Rust(std::move(build)));
-  else if(dynamic_cast<NpmBuild *>(build.get()))
+  if(dynamic_cast<NpmBuild *>(build.get()))
     return std::shared_ptr<Project::Base>(new Project::JavaScript(std::move(build)));
-  else
-    return std::shared_ptr<Project::Base>(new Project::Base(std::move(build)));
+  if(dynamic_cast<PythonMain *>(build.get()))
+    return std::shared_ptr<Project::Base>(new Project::Python(std::move(build)));
+  return std::shared_ptr<Project::Base>(new Project::Base(std::move(build)));
 }
 
 std::pair<std::string, std::string> Project::Base::get_run_arguments() {
@@ -965,12 +966,27 @@ void Project::Markdown::compile_and_run() {
 }
 
 void Project::Python::compile_and_run() {
+  std::string command = Config::get().project.python_command + ' ';
+  boost::filesystem::path path;
+  if(!build->project_path.empty()) {
+    command += filesystem::get_short_path(build->project_path).string();
+    path = build->project_path;
+  }
+  else {
+    auto view = Notebook::get().get_current_view();
+    if(!view) {
+      Info::get().print("No executable found");
+      return;
+    }
+    command += filesystem::escape_argument(filesystem::get_short_path(view->file_path).string());
+    path = view->file_path.parent_path();
+  }
+
   if(Config::get().project.clear_terminal_on_compile)
     Terminal::get().clear();
 
-  auto command = Config::get().project.python_command + ' ' + filesystem::escape_argument(filesystem::get_short_path(Notebook::get().get_current_view()->file_path).string());
   Terminal::get().print("Running " + command + "\n");
-  Terminal::get().async_process(command, Notebook::get().get_current_view()->file_path.parent_path(), [command](int exit_status) {
+  Terminal::get().async_process(command, path, [command](int exit_status) {
     Terminal::get().async_print(command + " returned: " + std::to_string(exit_status) + '\n');
   });
 }

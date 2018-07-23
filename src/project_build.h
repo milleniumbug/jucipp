@@ -59,4 +59,6 @@ namespace Project {
   };
 
   class NpmBuild : public Build {};
+
+  class PythonMain : public Build {};
 } // namespace Project

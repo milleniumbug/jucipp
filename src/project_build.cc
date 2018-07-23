@@ -32,6 +32,12 @@ std::unique_ptr<Project::Build> Project::Build::create(const boost::filesystem::
       return build;
     }
 
+    if(boost::filesystem::exists(search_path / "__main__.py")) {
+      std::unique_ptr<Project::Build> build(new PythonMain());
+      build->project_path = search_path;
+      return build;
+    }
+
     if(search_path == search_path.root_directory())
       break;
     search_path = search_path.parent_path();
