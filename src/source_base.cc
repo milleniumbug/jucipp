@@ -191,21 +191,27 @@ void Source::BaseView::monitor_file() {
 #ifdef __APPLE__ // TODO: Gio file monitor is bugged on MacOS
   class Recursive {
   public:
-    static void f(BaseView *view, std::time_t last_write_time_) {
+    static void f(BaseView *view, std::time_t previous_last_write_time = static_cast<std::time_t>(-1)) {
       view->delayed_monitor_changed_connection.disconnect();
-      view->delayed_monitor_changed_connection = Glib::signal_timeout().connect([view, last_write_time_]() {
+      view->delayed_monitor_changed_connection = Glib::signal_timeout().connect([view, previous_last_write_time]() {
         boost::system::error_code ec;
         auto last_write_time = boost::filesystem::last_write_time(view->file_path, ec);
-        if(last_write_time != last_write_time_)
-          view->check_last_write_time(last_write_time);
-        Recursive::f(view, last_write_time);
+        if(last_write_time != view->last_write_time) {
+          if(last_write_time == previous_last_write_time) // If no change has happened in the last second (std::time_t is in seconds)
+            view->check_last_write_time(last_write_time);
+          else {
+            Recursive::f(view, last_write_time);
+            return false;
+          }
+        }
+        Recursive::f(view);
         return false;
       }, 1000);
     }
   };
   delayed_monitor_changed_connection.disconnect();
-  if(this->last_write_time != static_cast<std::time_t>(-1))
-    Recursive::f(this, last_write_time);
+  if(last_write_time != static_cast<std::time_t>(-1))
+    Recursive::f(this);
 #else
   if(this->last_write_time != static_cast<std::time_t>(-1)) {
     monitor = Gio::File::create_for_path(file_path.string())->monitor_file(Gio::FileMonitorFlags::FILE_MONITOR_NONE);
@@ -218,7 +224,7 @@ void Source::BaseView::monitor_file() {
         delayed_monitor_changed_connection = Glib::signal_timeout().connect([this]() {
           check_last_write_time();
           return false;
-        }, 500);
+        }, 1000); // Has to wait 1 second (std::time_t is in seconds)
       }
     });
   }
