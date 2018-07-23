@@ -191,18 +191,20 @@ void Source::BaseView::monitor_file() {
 #ifdef __APPLE__ // TODO: Gio file monitor is bugged on MacOS
   class Recursive {
   public:
-    static void f(BaseView *view, std::time_t previous_last_write_time = static_cast<std::time_t>(-1)) {
+    static void f(BaseView *view, std::time_t previous_last_write_time = static_cast<std::time_t>(-1), bool check_called = false) {
       view->delayed_monitor_changed_connection.disconnect();
-      view->delayed_monitor_changed_connection = Glib::signal_timeout().connect([view, previous_last_write_time]() {
+      view->delayed_monitor_changed_connection = Glib::signal_timeout().connect([view, previous_last_write_time, check_called]() {
         boost::system::error_code ec;
         auto last_write_time = boost::filesystem::last_write_time(view->file_path, ec);
         if(!ec && last_write_time != view->last_write_time) {
-          if(last_write_time == previous_last_write_time) // If no change has happened in the last second (std::time_t is in seconds)
-            view->check_last_write_time(last_write_time);
-          else {
-            Recursive::f(view, last_write_time);
+          if(last_write_time == previous_last_write_time) { // If no change has happened in the last second (std::time_t is in seconds).
+            if(!check_called)                               // To avoid several info messages when file is changed but not reloaded.
+              view->check_last_write_time(last_write_time);
+            Recursive::f(view, last_write_time, true);
             return false;
           }
+          Recursive::f(view, last_write_time);
+          return false;
         }
         Recursive::f(view);
         return false;
