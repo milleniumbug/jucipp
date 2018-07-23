@@ -239,10 +239,9 @@ void Window::set_menu_actions() {
         if(chr == ' ')
           chr = '_';
       }
-      auto cmakelists_path = project_path;
-      cmakelists_path /= "CMakeLists.txt";
-      auto c_main_path = project_path;
-      c_main_path /= "main.c";
+      auto cmakelists_path = project_path / "CMakeLists.txt";
+      auto c_main_path = project_path / "main.c";
+      auto clang_format_path = project_path / ".clang-format";
       if(boost::filesystem::exists(cmakelists_path)) {
         Terminal::get().print("Error: " + cmakelists_path.string() + " already exists.\n", true);
         return;
@@ -251,9 +250,14 @@ void Window::set_menu_actions() {
         Terminal::get().print("Error: " + c_main_path.string() + " already exists.\n", true);
         return;
       }
+      if(boost::filesystem::exists(clang_format_path)) {
+        Terminal::get().print("Error: " + clang_format_path.string() + " already exists.\n", true);
+        return;
+      }
       std::string cmakelists = "cmake_minimum_required(VERSION 2.8)\n\nproject(" + project_name + ")\n\nset(CMAKE_C_FLAGS \"${CMAKE_C_FLAGS} -std=c11 -Wall -Wextra\")\n\nadd_executable(" + project_name + " main.c)\n";
       std::string c_main = "#include <stdio.h>\n\nint main() {\n  printf(\"Hello World!\\n\");\n}\n";
-      if(filesystem::write(cmakelists_path, cmakelists) && filesystem::write(c_main_path, c_main)) {
+      std::string clang_format = "IndentWidth: 2\nAccessModifierOffset: -2\nUseTab: Never\nColumnLimit: 0\nMaxEmptyLinesToKeep: 2\nSpaceBeforeParens: Never\nBreakBeforeBraces: Custom\nBraceWrapping: {BeforeElse: true, BeforeCatch: true}\n";
+      if(filesystem::write(cmakelists_path, cmakelists) && filesystem::write(c_main_path, c_main) && filesystem::write(clang_format_path, clang_format)) {
         Directories::get().open(project_path);
         Notebook::get().open(c_main_path);
         Directories::get().update();
@@ -271,10 +275,9 @@ void Window::set_menu_actions() {
         if(chr == ' ')
           chr = '_';
       }
-      auto cmakelists_path = project_path;
-      cmakelists_path /= "CMakeLists.txt";
-      auto cpp_main_path = project_path;
-      cpp_main_path /= "main.cpp";
+      auto cmakelists_path = project_path / "CMakeLists.txt";
+      auto cpp_main_path = project_path / "main.cpp";
+      auto clang_format_path = project_path / ".clang-format";
       if(boost::filesystem::exists(cmakelists_path)) {
         Terminal::get().print("Error: " + cmakelists_path.string() + " already exists.\n", true);
         return;
@@ -283,9 +286,14 @@ void Window::set_menu_actions() {
         Terminal::get().print("Error: " + cpp_main_path.string() + " already exists.\n", true);
         return;
       }
+      if(boost::filesystem::exists(clang_format_path)) {
+        Terminal::get().print("Error: " + clang_format_path.string() + " already exists.\n", true);
+        return;
+      }
       std::string cmakelists = "cmake_minimum_required(VERSION 2.8)\n\nproject(" + project_name + ")\n\nset(CMAKE_CXX_FLAGS \"${CMAKE_CXX_FLAGS} -std=c++1y -Wall -Wextra\")\n\nadd_executable(" + project_name + " main.cpp)\n";
       std::string cpp_main = "#include <iostream>\n\nint main() {\n  std::cout << \"Hello World!\\n\";\n}\n";
-      if(filesystem::write(cmakelists_path, cmakelists) && filesystem::write(cpp_main_path, cpp_main)) {
+      std::string clang_format = "IndentWidth: 2\nAccessModifierOffset: -2\nUseTab: Never\nColumnLimit: 0\nMaxEmptyLinesToKeep: 2\nSpaceBeforeParens: Never\nBreakBeforeBraces: Custom\nBraceWrapping: {BeforeElse: true, BeforeCatch: true}\nNamespaceIndentation: All\n";
+      if(filesystem::write(cmakelists_path, cmakelists) && filesystem::write(cpp_main_path, cpp_main) && filesystem::write(clang_format_path, clang_format)) {
         Directories::get().open(project_path);
         Notebook::get().open(cpp_main_path);
         Directories::get().update();
