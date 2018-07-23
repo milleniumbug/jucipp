@@ -196,7 +196,7 @@ void Source::BaseView::monitor_file() {
       view->delayed_monitor_changed_connection = Glib::signal_timeout().connect([view, previous_last_write_time]() {
         boost::system::error_code ec;
         auto last_write_time = boost::filesystem::last_write_time(view->file_path, ec);
-        if(last_write_time != view->last_write_time) {
+        if(!ec && last_write_time != view->last_write_time) {
           if(last_write_time == previous_last_write_time) // If no change has happened in the last second (std::time_t is in seconds)
             view->check_last_write_time(last_write_time);
           else {
