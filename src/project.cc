@@ -968,7 +968,7 @@ void Project::Markdown::compile_and_run() {
 void Project::Python::compile_and_run() {
   std::string command = Config::get().project.python_command + ' ';
   boost::filesystem::path path;
-  if(!build->project_path.empty()) {
+  if(dynamic_cast<PythonMain *>(build.get())) {
     command += filesystem::get_short_path(build->project_path).string();
     path = build->project_path;
   }
@@ -994,7 +994,7 @@ void Project::Python::compile_and_run() {
 void Project::JavaScript::compile_and_run() {
   std::string command;
   boost::filesystem::path path;
-  if(!build->project_path.empty()) {
+  if(dynamic_cast<NpmBuild *>(build.get())) {
     command = "npm start";
     path = build->project_path;
   }
