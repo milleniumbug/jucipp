@@ -28,7 +28,7 @@ Install language server, and create symbolic link to enable server in juCi++:
 ```sh
 pip3 install python-language-server[rope,pycodestyle,yapf] pyls-mypy
 
-ln -s pyls /usr/local/bin/python-language-server
+ln -s `which pyls` /usr/local/bin/python-language-server
 ```
 
 * Additional setup within a Python project:
