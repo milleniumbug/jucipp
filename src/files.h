@@ -33,7 +33,7 @@ const std::string default_config_file = R"RAW({
         "cleanup_whitespace_characters": false,
         "show_whitespace_characters_comment": "Determines what kind of whitespaces should be drawn. Use comma-separated list of: space, tab, newline, nbsp, leading, text, trailing or all",
         "show_whitespace_characters": "",
-        "format_style_on_save_comment": "Performs clang-format on save for C/C++ and other curly-bracket languages supported by clang-format",
+        "format_style_on_save_comment": "Performs style format on save if supported on language in buffer",
         "format_style_on_save": false,
         "format_style_on_save_if_style_file_found_comment": "Format style if format file is found, even if format_style_on_save is false",
         "format_style_on_save_if_style_file_found": false,
