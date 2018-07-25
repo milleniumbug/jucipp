@@ -164,16 +164,19 @@ bool Terminal::on_motion_notify_event(GdkEventMotion *event) {
 }
 
 std::tuple<size_t, size_t, std::string, std::string, std::string> Terminal::find_link(const std::string &line) {
-  const static std::regex link_regex("^([A-Z]:)?([^:]+):([0-9]+):([0-9]+): .*$|"                      //compile warning/error/rename usages
-                                     "^Assertion failed: .*file ([A-Z]:)?([^:]+), line ([0-9]+)\\.$|" //clang assert()
-                                     "^[^:]*: ([A-Z]:)?([^:]+):([0-9]+): .* Assertion .* failed\\.$|" //gcc assert()
-                                     "^ERROR:([A-Z]:)?([^:]+):([0-9]+):.*$");                         //g_assert (glib.h)
+  const static std::regex link_regex("^([A-Z]:)?([^:]+):([0-9]+):([0-9]+): .*$|"                      // C/C++ compile warning/error/rename usages
+                                     "^  --> ([A-Z]:)?([^:]+):([0-9]+):([0-9]+)$|"                    // Rust
+                                     "^Assertion failed: .*file ([A-Z]:)?([^:]+), line ([0-9]+)\\.$|" // clang assert()
+                                     "^[^:]*: ([A-Z]:)?([^:]+):([0-9]+): .* Assertion .* failed\\.$|" // gcc assert()
+                                     "^ERROR:([A-Z]:)?([^:]+):([0-9]+):.*$|"                          // g_assert (glib.h)
+                                     "^([A-Z]:)?([\\/][^:]+):([0-9]+)$|"                              // Node.js
+                                     "^  File \"([A-Z]:)?([^\"]+)\", line ([0-9]+), in .*$");         // Python
   size_t start_position = -1, end_position = -1;
   std::string path, line_number, line_offset;
   std::smatch sm;
   if(std::regex_match(line, sm, link_regex)) {
     for(size_t sub = 1; sub < link_regex.mark_count();) {
-      size_t subs = sub == 1 ? 4 : 3;
+      size_t subs = sub == 1 || sub == 5 ? 4 : 3;
       if(sm.length(sub + 1)) {
         start_position = sm.position(sub + 1) - sm.length(sub);
         end_position = sm.position(sub + subs - 1) + sm.length(sub + subs - 1);
@@ -369,11 +372,14 @@ bool Terminal::on_button_press_event(GdkEventButton *button_event) {
 
         if(path.is_relative()) {
           if(Project::current) {
-            auto absolute_path = Project::current->build->get_default_path() / path;
-            if(boost::filesystem::exists(absolute_path))
-              path = absolute_path;
-            else
+            if(boost::filesystem::exists(Project::current->build->get_default_path() / path))
+              path = Project::current->build->get_default_path() / path;
+            else if(boost::filesystem::exists(Project::current->build->get_debug_path() / path))
               path = Project::current->build->get_debug_path() / path;
+            else if(boost::filesystem::exists(Project::current->build->project_path / path))
+              path = Project::current->build->project_path / path;
+            else
+              return Gtk::TextView::on_button_press_event(button_event);
           }
           else
             return Gtk::TextView::on_button_press_event(button_event);
