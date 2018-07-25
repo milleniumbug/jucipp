@@ -78,5 +78,10 @@ int main() {
   {
     boost::filesystem::path relative_path = "filesystem_test.cc";
     g_assert(filesystem::get_relative_path(tests_path / relative_path, tests_path) == relative_path);
+    g_assert(filesystem::get_relative_path(tests_path / "test" / relative_path, tests_path) == boost::filesystem::path("test") / relative_path);
+
+    g_assert(filesystem::get_relative_path("/test/test/test.cc", "/test/base") == boost::filesystem::path("..") / "test" / "test.cc");
+    g_assert(filesystem::get_relative_path("/test/test/test/test.cc", "/test/base") == boost::filesystem::path("..") / "test" / "test" / "test.cc");
+    g_assert(filesystem::get_relative_path("/test2/test.cc", "/test/base") == boost::filesystem::path("..") / ".." / "test2" / "test.cc");
   }
 }

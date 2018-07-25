@@ -602,9 +602,9 @@ void Project::LLDB::debug_show_variables() {
         return;
       }
       self->debug_variable_tooltips.clear();
-      auto create_tooltip_buffer = [rows, view, index]() {
+
+      auto set_tooltip_buffer = [rows, index](const Glib::RefPtr<Gtk::TextBuffer> &buffer) {
         auto variable = (*rows)[index];
-        auto tooltip_buffer = view ? Gtk::TextBuffer::create(view->get_buffer()->get_tag_table()) : Gtk::TextBuffer::create();
 
         Glib::ustring value = variable.value;
         if(!value.empty()) {
@@ -614,19 +614,13 @@ void Project::LLDB::debug_show_variables() {
             next_char_iter++;
             value.replace(iter, next_char_iter, "?");
           }
-          if(view)
-            tooltip_buffer->insert(tooltip_buffer->get_insert()->get_iter(), value.substr(0, value.size() - 1));
-          else
-            tooltip_buffer->insert(tooltip_buffer->get_insert()->get_iter(), value.substr(0, value.size() - 1));
+          buffer->insert(buffer->get_insert()->get_iter(), value.substr(0, value.size() - 1));
         }
-
-        return tooltip_buffer;
       };
-
       if(view)
-        self->debug_variable_tooltips.emplace_back(create_tooltip_buffer, view, view->get_buffer()->create_mark(iter), view->get_buffer()->create_mark(iter));
+        self->debug_variable_tooltips.emplace_back(view, view->get_buffer()->create_mark(iter), view->get_buffer()->create_mark(iter), std::move(set_tooltip_buffer));
       else
-        self->debug_variable_tooltips.emplace_back(create_tooltip_buffer);
+        self->debug_variable_tooltips.emplace_back(std::move(set_tooltip_buffer));
 
       self->debug_variable_tooltips.show(true);
     };
@@ -707,97 +701,68 @@ void Project::LanguageProtocol::show_symbols() {
     SelectionDialog::get()->on_search_entry_changed = nullptr; // To delete client object
   };
 
-  auto offsets = std::make_shared<std::vector<Source::Offset>>();
+  auto locations = std::make_shared<std::vector<::LanguageProtocol::Location>>();
   if(capabilities.workspace_symbol) {
-    SelectionDialog::get()->on_search_entry_changed = [client, project_path, offsets](const std::string &text) {
+    SelectionDialog::get()->on_search_entry_changed = [client, project_path, locations](const std::string &text) {
       if(text.size() > 1)
         return;
       else {
-        offsets->clear();
+        locations->clear();
         SelectionDialog::get()->erase_rows();
         if(text.empty())
           return;
       }
       std::vector<std::string> names;
       std::promise<void> result_processed;
-      client->write_request(nullptr, "workspace/symbol", R"("query":")" + text + '"', [&result_processed, &names, offsets, project_path](const boost::property_tree::ptree &result, bool error) {
+      client->write_request(nullptr, "workspace/symbol", R"("query":")" + text + '"', [&result_processed, &names, locations, project_path](const boost::property_tree::ptree &result, bool error) {
         if(!error) {
           for(auto it = result.begin(); it != result.end(); ++it) {
-            auto name = it->second.get<std::string>("name", "");
-            if(!name.empty()) {
-              auto location_it = it->second.find("location");
-              if(location_it != it->second.not_found()) {
-                auto file = location_it->second.get<std::string>("uri", "");
-                if(file.size() > 7) {
-                  file.erase(0, 7);
-                  auto range_it = location_it->second.find("range");
-                  if(range_it != location_it->second.not_found()) {
-                    auto start_it = range_it->second.find("start");
-                    if(start_it != range_it->second.not_found()) {
-                      try {
-                        offsets->emplace_back(Source::Offset(start_it->second.get<unsigned>("line"), start_it->second.get<unsigned>("character"), file));
-                        names.emplace_back(name);
-                      }
-                      catch(...) {
-                      }
-                    }
-                  }
-                }
+            try {
+              ::LanguageProtocol::Location location(it->second.get_child("location"));
+              if(filesystem::file_in_path(location.uri, *project_path)) {
+                locations->emplace_back(std::move(location));
+                names.emplace_back(it->second.get<std::string>("name"));
               }
+            }
+            catch(...) {
             }
           }
         }
         result_processed.set_value();
       });
       result_processed.get_future().get();
-      for(size_t c = 0; c < offsets->size() && c < names.size(); ++c)
-        SelectionDialog::get()->add_row(filesystem::get_relative_path((*offsets)[c].file_path, *project_path).string() + ':' + std::to_string((*offsets)[c].line + 1) + ':' + std::to_string((*offsets)[c].index + 1) + ": " + names[c]);
+      for(size_t c = 0; c < locations->size() && c < names.size(); ++c)
+        SelectionDialog::get()->add_row(filesystem::get_relative_path((*locations)[c].uri, *project_path).string() + ':' + std::to_string((*locations)[c].range.start.line + 1) + ':' + std::to_string((*locations)[c].range.start.character + 1) + ": " + names[c]);
     };
   }
   else {
     std::vector<std::string> names;
     std::promise<void> result_processed;
-    client->write_request(nullptr, "textDocument/documentSymbol", R"("textDocument":{"uri":")" + language_protocol_view->uri + "\"}", [&result_processed, &names, offsets, project_path](const boost::property_tree::ptree &result, bool error) {
+    client->write_request(nullptr, "textDocument/documentSymbol", R"("textDocument":{"uri":"file://)" + language_protocol_view->file_path.string() + "\"}", [&result_processed, &names, locations, project_path](const boost::property_tree::ptree &result, bool error) {
       if(!error) {
         for(auto it = result.begin(); it != result.end(); ++it) {
-          auto name = it->second.get<std::string>("name", "");
-          if(!name.empty()) {
-            auto location_it = it->second.find("location");
-            if(location_it != it->second.not_found()) {
-              auto file = location_it->second.get<std::string>("uri", "");
-              if(file.size() > 7) {
-                file.erase(0, 7);
-                auto range_it = location_it->second.find("range");
-                if(range_it != location_it->second.not_found()) {
-                  auto start_it = range_it->second.find("start");
-                  if(start_it != range_it->second.not_found()) {
-                    try {
-                      offsets->emplace_back(Source::Offset(start_it->second.get<unsigned>("line"), start_it->second.get<unsigned>("character"), file));
-                      names.emplace_back(name);
-                    }
-                    catch(...) {
-                    }
-                  }
-                }
-              }
-            }
+          try {
+            locations->emplace_back(it->second.get_child("location"));
+            names.emplace_back(it->second.get<std::string>("name"));
+          }
+          catch(...) {
           }
         }
       }
       result_processed.set_value();
     });
     result_processed.get_future().get();
-    for(size_t c = 0; c < offsets->size() && c < names.size(); ++c)
-      SelectionDialog::get()->add_row(std::to_string((*offsets)[c].line + 1) + ':' + std::to_string((*offsets)[c].index + 1) + ": " + names[c]);
+    for(size_t c = 0; c < locations->size() && c < names.size(); ++c)
+      SelectionDialog::get()->add_row(std::to_string((*locations)[c].range.start.line + 1) + ':' + std::to_string((*locations)[c].range.start.character + 1) + ": " + names[c]);
   }
 
-  SelectionDialog::get()->on_select = [offsets](unsigned int index, const std::string &text, bool hide_window) {
-    auto &offset = (*offsets)[index];
-    if(!boost::filesystem::is_regular_file(offset.file_path))
+  SelectionDialog::get()->on_select = [locations](unsigned int index, const std::string &text, bool hide_window) {
+    auto &offset = (*locations)[index];
+    if(!boost::filesystem::is_regular_file(offset.uri))
       return;
-    Notebook::get().open(offset.file_path);
+    Notebook::get().open(offset.uri);
     auto view = Notebook::get().get_current_view();
-    view->place_cursor_at_line_offset(offset.line, offset.index);
+    view->place_cursor_at_line_offset(offset.range.start.line, offset.range.start.character);
     view->scroll_to_cursor_delayed(view, true, false);
   };
 

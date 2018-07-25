@@ -19,6 +19,7 @@ namespace Source {
   public:
     ClangViewParse(const boost::filesystem::path &file_path, const Glib::RefPtr<Gsv::Language> &language);
 
+    void rename(const boost::filesystem::path &path) override;
     bool save() override;
     void configure() override;
 

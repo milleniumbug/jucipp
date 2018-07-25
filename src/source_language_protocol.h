@@ -14,12 +14,65 @@ namespace Source {
 }
 
 namespace LanguageProtocol {
+  class Offset {
+  public:
+    Offset(const boost::property_tree::ptree &pt) : line(pt.get<unsigned>("line")),
+                                                    character(pt.get<unsigned>("character")) {}
+    unsigned line;
+    unsigned character;
+  };
+
+  class Range {
+  public:
+    Range(const boost::property_tree::ptree &pt) : start(pt.get_child("start")),
+                                                   end(pt.get_child("end")) {}
+    Range() = default;
+    Offset start, end;
+  };
+
+  class Location {
+  public:
+    Location(const boost::property_tree::ptree &pt, std::string uri_ = {}) : range(pt.get_child("range")) {
+      if(uri_.empty()) {
+        uri = pt.get<std::string>("uri");
+        uri.erase(0, 7);
+      }
+      else
+        uri = std::move(uri_);
+    }
+    std::string uri;
+    Range range;
+  };
+
   class Diagnostic {
   public:
-    std::string spelling;
-    std::pair<Source::Offset, Source::Offset> offsets;
+    class RelatedInformation {
+    public:
+      RelatedInformation(const boost::property_tree::ptree &pt) : message(pt.get<std::string>("message")),
+                                                                  location(pt.get_child("location")) {}
+      std::string message;
+      Location location;
+    };
+
+    Diagnostic(const boost::property_tree::ptree &pt) : message(pt.get<std::string>("message")),
+                                                        range(pt.get_child("range")),
+                                                        severity(pt.get<unsigned>("severity", 0)) {
+      auto related_information_it = pt.get_child("relatedInformation", boost::property_tree::ptree());
+      for(auto it = related_information_it.begin(); it != related_information_it.end(); ++it)
+        related_informations.emplace_back(it->second);
+    }
+    std::string message;
+    Range range;
     unsigned severity;
-    std::string uri;
+    std::vector<RelatedInformation> related_informations;
+  };
+
+  class TextEdit {
+  public:
+    TextEdit(const boost::property_tree::ptree &pt, std::string new_text_ = {}) : range(pt.get_child("range")),
+                                                                                  new_text(new_text_.empty() ? pt.get<std::string>("newText") : std::move(new_text_)) {}
+    Range range;
+    std::string new_text;
   };
 
   class Capabilities {
@@ -86,9 +139,11 @@ namespace Source {
   class LanguageProtocolView : public View {
   public:
     LanguageProtocolView(const boost::filesystem::path &file_path, const Glib::RefPtr<Gsv::Language> &language, std::string language_id_);
+    void initialize(bool setup);
+    void close();
     ~LanguageProtocolView() override;
-    std::string uri;
 
+    void rename(const boost::filesystem::path &path) override;
     bool save() override;
 
     void update_diagnostics(std::vector<LanguageProtocol::Diagnostic> &&diagnostics);
@@ -125,7 +180,6 @@ namespace Source {
 
     boost::filesystem::path flow_coverage_executable;
     std::vector<std::pair<Glib::RefPtr<Gtk::TextMark>, Glib::RefPtr<Gtk::TextMark>>> flow_coverage_marks;
-    const std::string flow_coverage_message = "Not covered by Flow";
     size_t num_warnings = 0, num_errors = 0, num_fix_its = 0, num_flow_coverage_warnings = 0;
     void add_flow_coverage_tooltips(bool called_in_thread);
   };

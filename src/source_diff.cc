@@ -313,9 +313,9 @@ std::unique_ptr<Git::Repository::Diff> Source::DiffView::get_diff() {
   boost::filesystem::path relative_path;
   {
     std::unique_lock<std::mutex> lock(canonical_file_path_mutex);
-    relative_path = filesystem::get_relative_path(canonical_file_path, work_path);
-    if(relative_path.empty())
+    if(!filesystem::file_in_path(canonical_file_path, work_path))
       throw std::runtime_error("not a relative path");
+    relative_path = filesystem::get_relative_path(canonical_file_path, work_path);
   }
   return std::make_unique<Git::Repository::Diff>(repository->get_diff(relative_path));
 }

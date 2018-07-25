@@ -11,6 +11,7 @@
 #include "documentation_cppreference.h"
 #include "filesystem.h"
 #include "info.h"
+#include "notebook.h"
 #include "selection_dialog.h"
 #include "usages_clang.h"
 
@@ -41,6 +42,14 @@ Source::ClangViewParse::ClangViewParse(const boost::filesystem::path &file_path,
   get_buffer()->signal_changed().connect([this]() {
     soft_reparse(true);
   });
+}
+
+void Source::ClangViewParse::rename(const boost::filesystem::path &path) {
+  Source::DiffView::rename(path);
+  if(Notebook::get().get_current_view() == this)
+    full_reparse();
+  else
+    full_reparse_needed = true;
 }
 
 bool Source::ClangViewParse::save() {
@@ -338,7 +347,9 @@ void Source::ClangViewParse::update_diagnostics() {
       if(!fix_its_string.empty())
         diagnostic.spelling += "\n\n" + fix_its_string;
 
-      add_diagnostic_tooltip(start, end, diagnostic.spelling, error);
+      add_diagnostic_tooltip(start, end, error, [spelling = std::move(diagnostic.spelling)](const Glib::RefPtr<Gtk::TextBuffer> &buffer) {
+        buffer->insert_at_cursor(spelling);
+      });
     }
   }
   status_diagnostics = std::make_tuple(num_warnings, num_errors, num_fix_its);
@@ -371,12 +382,12 @@ void Source::ClangViewParse::show_type_tooltips(const Gdk::Rectangle &rectangle)
           if(referenced) {
             auto start = get_buffer()->get_iter_at_line_index(token_offsets.first.line - 1, token_offsets.first.index - 1);
             auto end = get_buffer()->get_iter_at_line_index(token_offsets.second.line - 1, token_offsets.second.index - 1);
-            auto create_tooltip_buffer = [this, &token, &start, &end]() {
-              auto tooltip_buffer = Gtk::TextBuffer::create(get_buffer()->get_tag_table());
-              tooltip_buffer->insert(tooltip_buffer->get_insert()->get_iter(), "Type: " + token.get_cursor().get_type_description());
+
+            type_tooltips.emplace_back(this, get_buffer()->create_mark(start), get_buffer()->create_mark(end), [this, token, start, end](const Glib::RefPtr<Gtk::TextBuffer> &buffer) {
+              buffer->insert(buffer->get_insert()->get_iter(), "Type: " + token.get_cursor().get_type_description());
               auto brief_comment = token.get_cursor().get_brief_comments();
               if(brief_comment != "")
-                tooltip_buffer->insert(tooltip_buffer->get_insert()->get_iter(), "\n\n" + brief_comment);
+                buffer->insert(buffer->get_insert()->get_iter(), "\n\n" + brief_comment);
 
 #ifdef JUCI_ENABLE_DEBUG
               if(Debug::LLDB::get().is_stopped()) {
@@ -385,8 +396,9 @@ void Source::ClangViewParse::show_type_tooltips(const Gdk::Rectangle &rectangle)
                 Glib::ustring value_type = "Value";
 
                 auto iter = start;
+                auto corrected_start = start;
                 while((*iter >= 'a' && *iter <= 'z') || (*iter >= 'A' && *iter <= 'Z') || (*iter >= '0' && *iter <= '9') || *iter == '_' || *iter == '.') {
-                  start = iter;
+                  corrected_start = iter;
                   if(!iter.backward_char())
                     break;
                   if(*iter == '>') {
@@ -398,7 +410,7 @@ void Source::ClangViewParse::show_type_tooltips(const Gdk::Rectangle &rectangle)
                       break;
                   }
                 }
-                auto spelling = get_buffer()->get_text(start, end).raw();
+                auto spelling = get_buffer()->get_text(corrected_start, end).raw();
 
                 Glib::ustring debug_value;
                 auto cursor_kind = referenced.get_kind();
@@ -421,16 +433,12 @@ void Source::ClangViewParse::show_type_tooltips(const Gdk::Rectangle &rectangle)
                       next_char_iter++;
                       debug_value.replace(iter, next_char_iter, "?");
                     }
-                    tooltip_buffer->insert(tooltip_buffer->get_insert()->get_iter(), "\n\n" + value_type + ": " + debug_value.substr(pos + 3, debug_value.size() - (pos + 3) - 1));
+                    buffer->insert(buffer->get_insert()->get_iter(), "\n\n" + value_type + ": " + debug_value.substr(pos + 3, debug_value.size() - (pos + 3) - 1));
                   }
                 }
               }
 #endif
-
-              return tooltip_buffer;
-            };
-
-            type_tooltips.emplace_back(create_tooltip_buffer, this, get_buffer()->create_mark(start), get_buffer()->create_mark(end));
+            });
             type_tooltips.show();
             return;
           }

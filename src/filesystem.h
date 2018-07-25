@@ -20,7 +20,10 @@ public:
   static std::string unescape_argument(const std::string &argument);
 
   static boost::filesystem::path get_home_path() noexcept;
+  /// Replaces home path with ~
   static boost::filesystem::path get_short_path(const boost::filesystem::path &path) noexcept;
+  /// Replaces ~ with home path (boost::filesystem does not recognize ~)
+  static boost::filesystem::path get_long_path(const boost::filesystem::path &path) noexcept;
 
   static bool file_in_path(const boost::filesystem::path &file_path, const boost::filesystem::path &path);
   static boost::filesystem::path find_file_in_path_parents(const std::string &file_name, const boost::filesystem::path &path);
@@ -28,7 +31,6 @@ public:
   /// Return path with dot, dot-dot and directory separator elements removed
   static boost::filesystem::path get_normal_path(const boost::filesystem::path &path) noexcept;
 
-  /// Returns empty path on failure
   static boost::filesystem::path get_relative_path(const boost::filesystem::path &path, const boost::filesystem::path &base) noexcept;
 
   /// Return executable with latest version in filename on systems that is lacking executable_name symbolic link

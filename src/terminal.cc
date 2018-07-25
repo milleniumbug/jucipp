@@ -354,21 +354,9 @@ bool Terminal::on_button_press_event(GdkEventButton *button_event) {
       }
       auto link = find_link(get_buffer()->get_text(start_iter, end_iter).raw());
       if(std::get<0>(link) != static_cast<size_t>(-1)) {
-        boost::filesystem::path path = std::get<2>(link);
+        auto path = filesystem::get_long_path(std::get<2>(link));
         std::string line = std::get<3>(link);
         std::string index = std::get<4>(link);
-
-        if(!path.empty() && *path.begin() == "~") { // boost::filesystem does not recognize ~
-          boost::filesystem::path corrected_path;
-          corrected_path = filesystem::get_home_path();
-          if(!corrected_path.empty()) {
-            auto it = path.begin();
-            ++it;
-            for(; it != path.end(); ++it)
-              corrected_path /= *it;
-            path = corrected_path;
-          }
-        }
 
         if(path.is_relative()) {
           if(Project::current) {

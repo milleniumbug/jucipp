@@ -817,8 +817,6 @@ void Window::set_menu_actions() {
       }
       for(auto &location : locations) {
         auto path = filesystem::get_relative_path(filesystem::get_normal_path(location.file_path), project_path);
-        if(path.empty())
-          path = location.file_path.filename();
         auto row = path.string() + ":" + std::to_string(location.line + 1);
         rows.emplace_back(location);
         SelectionDialog::get()->add_row(row);

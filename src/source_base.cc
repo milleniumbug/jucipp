@@ -181,6 +181,12 @@ void Source::BaseView::replace_text(const std::string &new_text) {
 void Source::BaseView::rename(const boost::filesystem::path &path) {
   file_path = path;
 
+  boost::system::error_code ec;
+  last_write_time = boost::filesystem::last_write_time(file_path, ec);
+  if(ec)
+    last_write_time = static_cast<std::time_t>(-1);
+  monitor_file();
+
   if(update_status_file_path)
     update_status_file_path(this);
   if(update_tab_label)

@@ -91,13 +91,21 @@ std::string filesystem::unescape_argument(const std::string &argument) {
 }
 
 boost::filesystem::path filesystem::get_home_path() noexcept {
+  static boost::filesystem::path home_path;
+  if(!home_path.empty())
+    return home_path;
   std::vector<std::string> environment_variables = {"HOME", "AppData"};
   char *ptr = nullptr;
   for(auto &variable : environment_variables) {
     ptr = std::getenv(variable.c_str());
-    boost::system::error_code ec;
-    if(ptr != nullptr && boost::filesystem::exists(ptr, ec))
-      return ptr;
+    if(ptr != nullptr) {
+      boost::system::error_code ec;
+      boost::filesystem::path path(ptr);
+      if(boost::filesystem::exists(path, ec)) {
+        home_path = std::move(path);
+        return home_path;
+      }
+    }
   }
   return boost::filesystem::path();
 }
@@ -106,11 +114,26 @@ boost::filesystem::path filesystem::get_short_path(const boost::filesystem::path
 #ifdef _WIN32
   return path;
 #else
-  static auto home_path = get_home_path();
-  if(!home_path.empty()) {
-    auto relative_path = filesystem::get_relative_path(path, home_path);
-    if(!relative_path.empty())
-      return "~" / relative_path;
+  auto home_path = get_home_path();
+  if(!home_path.empty() && file_in_path(path, home_path))
+    return "~" / get_relative_path(path, home_path);
+  return path;
+#endif
+}
+
+boost::filesystem::path filesystem::get_long_path(const boost::filesystem::path &path) noexcept {
+#ifdef _WIN32
+  return path;
+#else
+  if(!path.empty() && *path.begin() == "~") {
+    auto long_path = get_home_path();
+    if(!long_path.empty()) {
+      auto it = path.begin();
+      ++it;
+      for(; it != path.end(); ++it)
+        long_path /= *it;
+      return long_path;
+    }
   }
   return path;
 #endif
@@ -158,21 +181,20 @@ boost::filesystem::path filesystem::get_normal_path(const boost::filesystem::pat
 
 boost::filesystem::path filesystem::get_relative_path(const boost::filesystem::path &path, const boost::filesystem::path &base) noexcept {
   boost::filesystem::path relative_path;
-
-  if(std::distance(path.begin(), path.end()) < std::distance(base.begin(), base.end()))
-    return boost::filesystem::path();
-
   auto base_it = base.begin();
   auto path_it = path.begin();
-  while(path_it != path.end() && base_it != base.end()) {
-    if(*path_it != *base_it)
-      return boost::filesystem::path();
+  while(path_it != path.end() && base_it != base.end() && *path_it == *base_it) {
     ++path_it;
     ++base_it;
   }
-  for(; path_it != path.end(); ++path_it)
+  while(base_it != base.end()) {
+    relative_path /= "..";
+    ++base_it;
+  }
+  while(path_it != path.end()) {
     relative_path /= *path_it;
-
+    ++path_it;
+  }
   return relative_path;
 }
 

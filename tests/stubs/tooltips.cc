@@ -2,10 +2,9 @@
 
 Gdk::Rectangle Tooltips::drawn_tooltips_rectangle = Gdk::Rectangle();
 
-Tooltip::Tooltip(std::function<Glib::RefPtr<Gtk::TextBuffer>()> create_tooltip_buffer,
-                 Gtk::TextView *text_view,
-                 Glib::RefPtr<Gtk::TextBuffer::Mark> start_mark,
-                 Glib::RefPtr<Gtk::TextBuffer::Mark> end_mark) : text_view(text_view) {}
+Tooltip::Tooltip(Gtk::TextView *text_view,
+                 Glib::RefPtr<Gtk::TextBuffer::Mark> start_mark, Glib::RefPtr<Gtk::TextBuffer::Mark> end_mark,
+                 std::function<void(const Glib::RefPtr<Gtk::TextBuffer> &)> create_tooltip_buffer) : text_view(text_view) {}
 
 Tooltip::~Tooltip() {}
 

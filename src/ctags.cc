@@ -13,13 +13,8 @@ std::pair<boost::filesystem::path, std::unique_ptr<std::stringstream>> Ctags::ge
   auto run_path = build->project_path;
   std::string exclude;
   if(!run_path.empty()) {
-    auto relative_default_path = filesystem::get_relative_path(build->get_default_path(), run_path);
-    if(!relative_default_path.empty())
-      exclude += " --exclude=" + relative_default_path.string();
-
-    auto relative_debug_path = filesystem::get_relative_path(build->get_debug_path(), run_path);
-    if(!relative_debug_path.empty())
-      exclude += " --exclude=" + relative_debug_path.string();
+    exclude += " --exclude=" + filesystem::get_relative_path(build->get_default_path(), run_path).string();
+    exclude += " --exclude=" + filesystem::get_relative_path(build->get_debug_path(), run_path).string();
   }
   else {
     boost::system::error_code ec;

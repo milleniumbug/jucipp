@@ -1,12 +1,15 @@
 #include "tooltips.h"
+#include "filesystem.h"
+#include "notebook.h"
 #include "selection_dialog.h"
+#include <regex>
 
 std::set<Tooltip *> Tooltips::shown_tooltips;
 Gdk::Rectangle Tooltips::drawn_tooltips_rectangle = Gdk::Rectangle();
 
-Tooltip::Tooltip(std::function<Glib::RefPtr<Gtk::TextBuffer>()> create_tooltip_buffer_, Gtk::TextView *text_view,
-                 Glib::RefPtr<Gtk::TextBuffer::Mark> start_mark_, Glib::RefPtr<Gtk::TextBuffer::Mark> end_mark_)
-    : start_mark(std::move(start_mark_)), end_mark(std::move(end_mark_)), create_tooltip_buffer(std::move(create_tooltip_buffer_)), text_view(text_view) {}
+Tooltip::Tooltip(Gtk::TextView *text_view, Glib::RefPtr<Gtk::TextBuffer::Mark> start_mark_,
+                 Glib::RefPtr<Gtk::TextBuffer::Mark> end_mark_, std::function<void(const Glib::RefPtr<Gtk::TextBuffer> &)> set_buffer_)
+    : start_mark(std::move(start_mark_)), end_mark(std::move(end_mark_)), text_view(text_view), set_buffer(std::move(set_buffer_)) {}
 
 Tooltip::~Tooltip() {
   Tooltips::shown_tooltips.erase(this);
@@ -70,12 +73,75 @@ void Tooltip::show(bool disregard_drawn, const std::function<void()> &on_motion)
     box->get_style_context()->add_class("juci_tooltip_box");
     window->add(*box);
 
-    text_buffer = create_tooltip_buffer();
+    if(text_view) {
+      text_buffer = Gtk::TextBuffer::create(text_view->get_buffer()->get_tag_table());
+      link_tag = text_buffer->get_tag_table()->lookup("link");
+    }
+    else {
+      text_buffer = Gtk::TextBuffer::create();
+      link_tag = text_buffer->create_tag("link");
+      link_tag->property_underline() = Pango::Underline::UNDERLINE_SINGLE;
+      link_tag->property_foreground_rgba() = window->get_style_context()->get_color(Gtk::StateFlags::STATE_FLAG_LINK);
+    }
+    set_buffer(text_buffer);
+
     wrap_lines();
 
     auto tooltip_text_view = Gtk::manage(new Gtk::TextView(text_buffer));
     tooltip_text_view->get_style_context()->add_class("juci_tooltip_text_view");
     tooltip_text_view->set_editable(false);
+
+    static auto link_mouse_cursor = Gdk::Cursor::create(Gdk::CursorType::HAND1);
+    static auto default_mouse_cursor = Gdk::Cursor::create(Gdk::CursorType::XTERM);
+    tooltip_text_view->signal_motion_notify_event().connect([this, tooltip_text_view](GdkEventMotion *event) {
+      Gtk::TextIter iter;
+      int location_x, location_y;
+      tooltip_text_view->window_to_buffer_coords(Gtk::TextWindowType::TEXT_WINDOW_TEXT, event->x, event->y, location_x, location_y);
+      tooltip_text_view->get_iter_at_location(iter, location_x, location_y);
+      if(iter.has_tag(link_tag))
+        tooltip_text_view->get_window(Gtk::TextWindowType::TEXT_WINDOW_TEXT)->set_cursor(link_mouse_cursor);
+      else
+        tooltip_text_view->get_window(Gtk::TextWindowType::TEXT_WINDOW_TEXT)->set_cursor(default_mouse_cursor);
+      return false;
+    });
+    tooltip_text_view->signal_button_press_event().connect([this, tooltip_text_view](GdkEventButton *event) {
+      if(event->type == GDK_BUTTON_PRESS && event->button == GDK_BUTTON_PRIMARY) {
+        Gtk::TextIter iter;
+        int location_x, location_y;
+        tooltip_text_view->window_to_buffer_coords(Gtk::TextWindowType::TEXT_WINDOW_TEXT, event->x, event->y, location_x, location_y);
+        tooltip_text_view->get_iter_at_location(iter, location_x, location_y);
+        if(iter.has_tag(link_tag)) {
+          auto start = iter;
+          start.backward_to_tag_toggle(link_tag);
+          auto end = iter;
+          end.forward_to_tag_toggle(link_tag);
+          std::string text = tooltip_text_view->get_buffer()->get_text(start, end);
+          static std::regex regex("^([^:]+):([^:]+):([^:]+)$");
+          std::smatch sm;
+          if(std::regex_match(text, sm, regex)) {
+            auto path = boost::filesystem::path(sm[1].str());
+            if(auto view = dynamic_cast<Source::View *>(text_view))
+              path = filesystem::get_normal_path(view->file_path.parent_path() / path);
+
+            if(boost::filesystem::is_regular_file(path)) {
+              Notebook::get().open(path);
+              if(auto view = Notebook::get().get_current_view()) {
+                try {
+                  auto line = atoi(sm[2].str().c_str()) - 1;
+                  auto offset = atoi(sm[3].str().c_str()) - 1;
+                  view->place_cursor_at_line_offset(line, offset);
+                  view->scroll_to_cursor_delayed(view, true, false);
+                }
+                catch(...) {
+                }
+              }
+              return true;
+            }
+          }
+        }
+      }
+      return false;
+    });
 
 #if GTK_VERSION_GE(3, 20)
     box->add(*tooltip_text_view);

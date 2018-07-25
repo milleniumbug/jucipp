@@ -7,8 +7,8 @@
 
 class Tooltip {
 public:
-  Tooltip(std::function<Glib::RefPtr<Gtk::TextBuffer>()> create_tooltip_buffer_, Gtk::TextView *text_view, Glib::RefPtr<Gtk::TextBuffer::Mark> start_mark_, Glib::RefPtr<Gtk::TextBuffer::Mark> end_mark_);
-  Tooltip(std::function<Glib::RefPtr<Gtk::TextBuffer>()> create_tooltip_buffer_) : Tooltip(std::move(create_tooltip_buffer_), nullptr, Glib::RefPtr<Gtk::TextBuffer::Mark>(), Glib::RefPtr<Gtk::TextBuffer::Mark>()) {}
+  Tooltip(Gtk::TextView *text_view, Glib::RefPtr<Gtk::TextBuffer::Mark> start_mark_, Glib::RefPtr<Gtk::TextBuffer::Mark> end_mark_, std::function<void(const Glib::RefPtr<Gtk::TextBuffer> &)> set_buffer_);
+  Tooltip(std::function<void(const Glib::RefPtr<Gtk::TextBuffer> &)> set_buffer_) : Tooltip(nullptr, Glib::RefPtr<Gtk::TextBuffer::Mark>(), Glib::RefPtr<Gtk::TextBuffer::Mark>(), std::move(set_buffer_)) {}
   ~Tooltip();
 
   void update();
@@ -25,12 +25,14 @@ private:
   std::unique_ptr<Gtk::Window> window;
   void wrap_lines();
 
-  std::function<Glib::RefPtr<Gtk::TextBuffer>()> create_tooltip_buffer;
   Gtk::TextView *text_view;
+  std::function<void(const Glib::RefPtr<Gtk::TextBuffer> &)> set_buffer;
   std::pair<int, int> size;
   Gdk::Rectangle rectangle;
 
   bool shown = false;
+
+  Glib::RefPtr<Gtk::TextTag> link_tag;
 };
 
 class Tooltips {
