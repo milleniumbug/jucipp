@@ -157,6 +157,8 @@ void Notebook::open(const boost::filesystem::path &file_path_, size_t notebook_i
   source_view->configure();
 
   source_view->scroll_to_cursor_delayed = [this](Source::BaseView *view, bool center, bool show_tooltips) {
+    if(!show_tooltips)
+      view->hide_tooltips();
     while(Gtk::Main::events_pending())
       Gtk::Main::iteration(false);
     if(get_current_view() == view) {
