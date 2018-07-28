@@ -45,6 +45,13 @@ Source::BaseView::BaseView(const boost::filesystem::path &file_path, const Glib:
   }
   set_tab_char_and_size(tab_char, tab_size);
 
+#ifdef __APPLE__
+  primary_modifier_mask = GDK_MOD2_MASK;
+#else
+  primary_modifier_mask = GDK_CONTROL_MASK;
+#endif
+
+
   search_settings = gtk_source_search_settings_new();
   gtk_source_search_settings_set_wrap_around(search_settings, true);
   search_context = gtk_source_search_context_new(get_source_buffer()->gobj(), search_settings);
@@ -594,7 +601,7 @@ Gtk::TextIter Source::BaseView::get_tabs_end_iter() {
   return get_tabs_end_iter(get_buffer()->get_insert());
 }
 
-std::string Source::BaseView::get_token(Gtk::TextIter iter) {
+std::pair<Gtk::TextIter, Gtk::TextIter> Source::BaseView::get_token_iters(Gtk::TextIter iter) {
   auto start = iter;
   auto end = iter;
 
@@ -608,7 +615,12 @@ std::string Source::BaseView::get_token(Gtk::TextIter iter) {
       break;
   }
 
-  return get_buffer()->get_text(start, end);
+  return {start, end};
+}
+
+std::string Source::BaseView::get_token(const Gtk::TextIter &iter) {
+  auto range = get_token_iters(iter);
+  return get_buffer()->get_text(range.first, range.second);
 }
 
 void Source::BaseView::cleanup_whitespace_characters() {

@@ -16,10 +16,10 @@ namespace Source {
 namespace LanguageProtocol {
   class Offset {
   public:
-    Offset(const boost::property_tree::ptree &pt) : line(pt.get<unsigned>("line")),
-                                                    character(pt.get<unsigned>("character")) {}
-    unsigned line;
-    unsigned character;
+    Offset(const boost::property_tree::ptree &pt) : line(pt.get<int>("line")),
+                                                    character(pt.get<int>("character")) {}
+    int line;
+    int character;
   };
 
   class Range {
@@ -56,14 +56,14 @@ namespace LanguageProtocol {
 
     Diagnostic(const boost::property_tree::ptree &pt) : message(pt.get<std::string>("message")),
                                                         range(pt.get_child("range")),
-                                                        severity(pt.get<unsigned>("severity", 0)) {
+                                                        severity(pt.get<int>("severity", 0)) {
       auto related_information_it = pt.get_child("relatedInformation", boost::property_tree::ptree());
       for(auto it = related_information_it.begin(); it != related_information_it.end(); ++it)
         related_informations.emplace_back(it->second);
     }
     std::string message;
     Range range;
-    unsigned severity;
+    int severity;
     std::vector<RelatedInformation> related_informations;
   };
 
@@ -152,6 +152,8 @@ namespace Source {
 
   protected:
     void show_type_tooltips(const Gdk::Rectangle &rectangle) override;
+    void apply_similar_symbol_tag() override;
+    void apply_clickable_tag(const Gtk::TextIter &iter) override;
 
   private:
     std::string language_id;

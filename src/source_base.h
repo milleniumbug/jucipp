@@ -90,6 +90,9 @@ namespace Source {
     std::string tab;
     std::pair<char, unsigned> find_tab_char_and_size();
 
+    /// Apple key for MacOS, and control key otherwise
+    GdkModifierType primary_modifier_mask;
+
     /// Move iter to line start. Depending on iter position, before or after indentation.
     /// Works with wrapped lines.
     Gtk::TextIter get_smart_home_iter(const Gtk::TextIter &iter);
@@ -110,7 +113,8 @@ namespace Source {
     Gtk::TextIter get_tabs_end_iter(int line_nr);
     Gtk::TextIter get_tabs_end_iter();
 
-    std::string get_token(Gtk::TextIter iter);
+    std::pair<Gtk::TextIter, Gtk::TextIter> get_token_iters(Gtk::TextIter iter);
+    std::string get_token(const Gtk::TextIter &iter);
     void cleanup_whitespace_characters();
     void cleanup_whitespace_characters(const Gtk::TextIter &iter);
 

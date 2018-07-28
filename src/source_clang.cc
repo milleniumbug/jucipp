@@ -17,6 +17,8 @@
 
 clangmm::Index Source::ClangViewParse::clang_index(0, 0);
 
+const std::regex include_regex(R"(^[ \t]*#[ \t]*include[ \t]*[<"]([^<>"]+)[>"].*$)");
+
 Source::ClangViewParse::ClangViewParse(const boost::filesystem::path &file_path, const Glib::RefPtr<Gsv::Language> &language)
     : BaseView(file_path, language), Source::View(file_path, language) {
   Usages::Clang::erase_cache(file_path);
@@ -828,13 +830,6 @@ const std::unordered_map<std::string, std::string> &Source::ClangViewAutocomplet
 
 Source::ClangViewRefactor::ClangViewRefactor(const boost::filesystem::path &file_path, const Glib::RefPtr<Gsv::Language> &language)
     : BaseView(file_path, language), Source::ClangViewParse(file_path, language) {
-  get_buffer()->signal_changed().connect([this]() {
-    if(last_tagged_identifier) {
-      get_buffer()->remove_tag(similar_symbol_tag, get_buffer()->begin(), get_buffer()->end());
-      last_tagged_identifier = Identifier();
-    }
-  });
-
   get_token_spelling = [this]() {
     if(!parsed) {
       Info::get().print("Buffer is parsing");
@@ -969,17 +964,6 @@ Source::ClangViewRefactor::ClangViewRefactor(const boost::filesystem::path &file
     }
   };
 
-  get_buffer()->signal_mark_set().connect([this](const Gtk::TextBuffer::iterator &iterator, const Glib::RefPtr<Gtk::TextBuffer::Mark> &mark) {
-    if(mark->get_name() == "insert") {
-      delayed_tag_similar_symbols_connection.disconnect();
-      delayed_tag_similar_symbols_connection = Glib::signal_timeout().connect([this]() {
-        auto identifier = get_identifier();
-        tag_similar_identifiers(identifier);
-        return false;
-      }, 100);
-    }
-  });
-
   auto declaration_location = [this]() {
     auto identifier = get_identifier();
     if(identifier) {
@@ -989,7 +973,6 @@ Source::ClangViewRefactor::ClangViewRefactor(const boost::filesystem::path &file
     }
     else {
       // If cursor is at an include line, return offset to included file
-      const static std::regex include_regex(R"(^[ \t]*#[ \t]*include[ \t]*[<"]([^<>"]+)[>"].*$)");
       std::smatch sm;
       auto line = get_line();
       if(std::regex_match(line, sm, include_regex)) {
@@ -1721,25 +1704,50 @@ void Source::ClangViewRefactor::wait_parsing() {
   }
 }
 
-void Source::ClangViewRefactor::tag_similar_identifiers(const Identifier &identifier) {
-  if(parsed) {
-    if(identifier && last_tagged_identifier != identifier) {
-      get_buffer()->remove_tag(similar_symbol_tag, get_buffer()->begin(), get_buffer()->end());
-      auto offsets = clang_tokens->get_similar_token_offsets(identifier.kind, identifier.spelling, identifier.cursor.get_all_usr_extended());
-      for(auto &offset : offsets) {
-        auto start_iter = get_buffer()->get_iter_at_line_index(offset.first.line - 1, offset.first.index - 1);
-        auto end_iter = get_buffer()->get_iter_at_line_index(offset.second.line - 1, offset.second.index - 1);
-        get_buffer()->apply_tag(similar_symbol_tag, start_iter, end_iter);
-      }
-      last_tagged_identifier = identifier;
+void Source::ClangViewRefactor::apply_similar_symbol_tag() {
+  get_buffer()->remove_tag(similar_symbol_tag, get_buffer()->begin(), get_buffer()->end());
+  auto identifier = get_identifier();
+  if(identifier) {
+    auto offsets = clang_tokens->get_similar_token_offsets(identifier.kind, identifier.spelling, identifier.cursor.get_all_usr_extended());
+    for(auto &offset : offsets) {
+      auto start_iter = get_buffer()->get_iter_at_line_index(offset.first.line - 1, offset.first.index - 1);
+      auto end_iter = get_buffer()->get_iter_at_line_index(offset.second.line - 1, offset.second.index - 1);
+      get_buffer()->apply_tag(similar_symbol_tag, start_iter, end_iter);
     }
-  }
-  if(!identifier && last_tagged_identifier) {
-    get_buffer()->remove_tag(similar_symbol_tag, get_buffer()->begin(), get_buffer()->end());
-    last_tagged_identifier = Identifier();
   }
 }
 
+void Source::ClangViewRefactor::apply_clickable_tag(const Gtk::TextIter &iter) {
+  if(!parsed)
+    return;
+  auto line = static_cast<unsigned>(iter.get_line());
+  auto index = static_cast<unsigned>(iter.get_line_index());
+
+  for(size_t c = clang_tokens->size() - 1; c != static_cast<size_t>(-1); --c) {
+    auto &token = (*clang_tokens)[c];
+    if(token.is_identifier()) {
+      auto &token_offsets = clang_tokens_offsets[c];
+      if(line == token_offsets.first.line - 1 && index >= token_offsets.first.index - 1 && index <= token_offsets.second.index - 1) {
+        auto referenced = token.get_cursor().get_referenced();
+        if(referenced) {
+          auto start = get_buffer()->get_iter_at_line_index(token_offsets.first.line - 1, token_offsets.first.index - 1);
+          auto end = get_buffer()->get_iter_at_line_index(token_offsets.second.line - 1, token_offsets.second.index - 1);
+          get_buffer()->apply_tag(clickable_tag, start, end);
+          return;
+        }
+        break;
+      }
+    }
+  }
+  std::smatch sm;
+  auto line_at_iter = this->get_line(iter);
+  if(std::regex_match(line_at_iter, sm, include_regex)) {
+    auto start = get_buffer()->get_iter_at_line(line);
+    auto end = start;
+    end.forward_to_line_end();
+    get_buffer()->apply_tag(clickable_tag, start, end);
+  }
+}
 
 Source::ClangView::ClangView(const boost::filesystem::path &file_path, const Glib::RefPtr<Gsv::Language> &language)
     : BaseView(file_path, language), ClangViewParse(file_path, language), ClangViewAutocomplete(file_path, language), ClangViewRefactor(file_path, language) {

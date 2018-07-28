@@ -93,12 +93,13 @@ namespace Source {
   public:
     ClangViewRefactor(const boost::filesystem::path &file_path, const Glib::RefPtr<Gsv::Language> &language);
 
+  protected:
+    void apply_similar_symbol_tag() override;
+    void apply_clickable_tag(const Gtk::TextIter &iter) override;
+
   private:
     Identifier get_identifier();
     void wait_parsing();
-
-    void tag_similar_identifiers(const Identifier &identifier);
-    Identifier last_tagged_identifier;
   };
 
   class ClangView : public ClangViewAutocomplete, public ClangViewRefactor {

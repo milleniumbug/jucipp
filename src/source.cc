@@ -119,6 +119,9 @@ Source::View::View(const boost::filesystem::path &file_path, const Glib::RefPtr<
 
   similar_symbol_tag = get_buffer()->create_tag();
   similar_symbol_tag->property_weight() = Pango::WEIGHT_ULTRAHEAVY;
+  clickable_tag = get_buffer()->create_tag();
+  clickable_tag->property_underline() = Pango::Underline::UNDERLINE_SINGLE;
+  clickable_tag->property_underline_set() = true;
 
   get_buffer()->create_tag("def:warning");
   get_buffer()->create_tag("def:warning_underline");
@@ -147,23 +150,6 @@ Source::View::View(const boost::filesystem::path &file_path, const Glib::RefPtr<
   set_mark_attributes("debug_breakpoint_and_stop", mark_attr_debug_breakpoint_and_stop, 102);
 
   link_tag = get_buffer()->create_tag("link");
-
-  get_buffer()->signal_changed().connect([this]() {
-    if(update_status_location)
-      update_status_location(this);
-  });
-
-  signal_realize().connect([this] {
-    auto gutter = get_gutter(Gtk::TextWindowType::TEXT_WINDOW_LEFT);
-    auto renderer = gutter->get_renderer_at_pos(15, 0);
-    if(renderer) {
-      renderer_activate_connection.disconnect();
-      renderer_activate_connection = renderer->signal_activate().connect([this](const Gtk::TextIter &iter, const Gdk::Rectangle &, GdkEvent *) {
-        if(toggle_breakpoint)
-          toggle_breakpoint(iter.get_line());
-      });
-    }
-  });
 
   if(language) {
     auto language_id = language->get_id();
@@ -201,7 +187,7 @@ Source::View::View(const boost::filesystem::path &file_path, const Glib::RefPtr<
     }
   }
 
-  setup_tooltip_and_dialog_events();
+  setup_signals();
   setup_format_style(is_generic_view);
 
   std::string comment_characters;
@@ -455,17 +441,41 @@ void Source::View::configure() {
   }
 }
 
-void Source::View::setup_tooltip_and_dialog_events() {
+void Source::View::setup_signals() {
+  get_buffer()->signal_changed().connect([this]() {
+    if(update_status_location)
+      update_status_location(this);
+
+    hide_tooltips();
+
+    if(similar_symbol_tag_applied) {
+      get_buffer()->remove_tag(similar_symbol_tag, get_buffer()->begin(), get_buffer()->end());
+      similar_symbol_tag_applied = false;
+    }
+    if(clickable_tag_applied) {
+      get_buffer()->remove_tag(clickable_tag, get_buffer()->begin(), get_buffer()->end());
+      clickable_tag_applied = false;
+    }
+  });
+
+  signal_realize().connect([this] {
+    auto gutter = get_gutter(Gtk::TextWindowType::TEXT_WINDOW_LEFT);
+    auto renderer = gutter->get_renderer_at_pos(15, 0);
+    if(renderer) {
+      renderer_activate_connection.disconnect();
+      renderer_activate_connection = renderer->signal_activate().connect([this](const Gtk::TextIter &iter, const Gdk::Rectangle &, GdkEvent *) {
+        if(toggle_breakpoint)
+          toggle_breakpoint(iter.get_line());
+      });
+    }
+  });
+
   type_tooltips.on_motion = [this] {
     delayed_tooltips_connection.disconnect();
   };
   diagnostic_tooltips.on_motion = [this] {
     delayed_tooltips_connection.disconnect();
   };
-
-  get_buffer()->signal_changed().connect([this] {
-    hide_tooltips();
-  });
 
   signal_motion_notify_event().connect([this](GdkEventMotion *event) {
     if(on_motion_last_x != event->x || on_motion_last_y != event->y) {
@@ -485,6 +495,24 @@ void Source::View::setup_tooltip_and_dialog_events() {
           return false;
         }, 100);
       }
+
+      if(clickable_tag_applied) {
+        get_buffer()->remove_tag(clickable_tag, get_buffer()->begin(), get_buffer()->end());
+        clickable_tag_applied = false;
+      }
+      if((event->state & primary_modifier_mask) && !(event->state & GDK_SHIFT_MASK) && !(event->state & GDK_BUTTON1_MASK)) {
+        delayed_tag_clickable_connection.disconnect();
+        delayed_tag_clickable_connection = Glib::signal_timeout().connect([this, x = event->x, y = event->y]() {
+          int buffer_x, buffer_y;
+          window_to_buffer_coords(Gtk::TextWindowType::TEXT_WINDOW_TEXT, x, y, buffer_x, buffer_y);
+          Gtk::TextIter iter;
+          get_iter_at_location(iter, buffer_x, buffer_y);
+          apply_clickable_tag(iter);
+          clickable_tag_applied = true;
+          return false;
+        }, 100);
+      }
+
       auto last_mouse_pos = std::make_pair(on_motion_last_x, on_motion_last_y);
       auto mouse_pos = std::make_pair(event->x, event->y);
       type_tooltips.hide(last_mouse_pos, mouse_pos);
@@ -501,6 +529,7 @@ void Source::View::setup_tooltip_and_dialog_events() {
 
     if(mark->get_name() == "insert") {
       hide_tooltips();
+
       delayed_tooltips_connection.disconnect();
       delayed_tooltips_connection = Glib::signal_timeout().connect([this]() {
         Tooltips::init();
@@ -518,6 +547,13 @@ void Source::View::setup_tooltip_and_dialog_events() {
         return false;
       }, 500);
 
+      delayed_tag_similar_symbols_connection.disconnect();
+      delayed_tag_similar_symbols_connection = Glib::signal_timeout().connect([this] {
+        apply_similar_symbol_tag();
+        similar_symbol_tag_applied = true;
+        return false;
+      }, 100);
+
       if(SelectionDialog::get())
         SelectionDialog::get()->hide();
       if(CompletionDialog::get())
@@ -528,6 +564,14 @@ void Source::View::setup_tooltip_and_dialog_events() {
     }
   });
 
+  signal_key_release_event().connect([this](GdkEventKey *event) {
+    if((event->state & primary_modifier_mask) && clickable_tag_applied) {
+      get_buffer()->remove_tag(clickable_tag, get_buffer()->begin(), get_buffer()->end());
+      clickable_tag_applied = false;
+    }
+    return false;
+  });
+
   signal_scroll_event().connect([this](GdkEventScroll *event) {
     hide_tooltips();
     hide_dialogs();
@@ -536,6 +580,10 @@ void Source::View::setup_tooltip_and_dialog_events() {
 
   signal_focus_out_event().connect([this](GdkEventFocus *event) {
     hide_tooltips();
+    if(clickable_tag_applied) {
+      get_buffer()->remove_tag(clickable_tag, get_buffer()->begin(), get_buffer()->end());
+      clickable_tag_applied = false;
+    }
     return false;
   });
 
@@ -883,6 +931,7 @@ void Source::View::setup_format_style(bool is_generic_view) {
 Source::View::~View() {
   delayed_tooltips_connection.disconnect();
   delayed_tag_similar_symbols_connection.disconnect();
+  delayed_tag_clickable_connection.disconnect();
   renderer_activate_connection.disconnect();
 
   non_deleted_views.erase(this);
@@ -2637,12 +2686,7 @@ bool Source::View::on_button_press_event(GdkEventButton *event) {
 
   // Go to implementation or declaration
   if((event->type == GDK_BUTTON_PRESS) && (event->button == 1)) {
-#ifdef __APPLE__
-    GdkModifierType mask = GDK_MOD2_MASK;
-#else
-    GdkModifierType mask = GDK_CONTROL_MASK;
-#endif
-    if(event->state & mask) {
+    if(event->state & primary_modifier_mask) {
       int x, y;
       window_to_buffer_coords(Gtk::TextWindowType::TEXT_WINDOW_TEXT, event->x, event->y, x, y);
       Gtk::TextIter iter;

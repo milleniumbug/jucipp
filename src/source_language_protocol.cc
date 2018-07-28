@@ -93,7 +93,7 @@ LanguageProtocol::Capabilities LanguageProtocol::Client::initialize(Source::Lang
     if(!error) {
       auto capabilities_pt = result.find("capabilities");
       if(capabilities_pt != result.not_found()) {
-        capabilities.text_document_sync = static_cast<LanguageProtocol::Capabilities::TextDocumentSync>(capabilities_pt->second.get<unsigned>("textDocumentSync", 0));
+        capabilities.text_document_sync = static_cast<LanguageProtocol::Capabilities::TextDocumentSync>(capabilities_pt->second.get<int>("textDocumentSync", 0));
         capabilities.hover = capabilities_pt->second.get<bool>("hoverProvider", false);
         capabilities.completion = capabilities_pt->second.find("completionProvider") != capabilities_pt->second.not_found() ? true : false;
         capabilities.definition = capabilities_pt->second.get<bool>("definitionProvider", false);
@@ -340,20 +340,6 @@ Source::LanguageProtocolView::LanguageProtocolView(const boost::filesystem::path
 
   initialize(true);
 
-  get_buffer()->signal_changed().connect([this] {
-    get_buffer()->remove_tag(similar_symbol_tag, get_buffer()->begin(), get_buffer()->end());
-  });
-
-  get_buffer()->signal_mark_set().connect([this](const Gtk::TextBuffer::iterator &iterator, const Glib::RefPtr<Gtk::TextBuffer::Mark> &mark) {
-    if(mark->get_name() == "insert") {
-      delayed_tag_similar_symbols_connection.disconnect();
-      delayed_tag_similar_symbols_connection = Glib::signal_timeout().connect([this]() {
-        tag_similar_symbols();
-        return false;
-      }, 200);
-    }
-  });
-
   get_buffer()->signal_insert().connect([this](const Gtk::TextBuffer::iterator &start, const Glib::ustring &text_, int bytes) {
     std::string content_changes;
     if(capabilities.text_document_sync == LanguageProtocol::Capabilities::TextDocumentSync::NONE)
@@ -514,8 +500,8 @@ void Source::LanguageProtocolView::setup_navigation_and_refactoring() {
       // If entire buffer is replaced:
       if(text_edits.size() == 1 &&
          text_edits[0].range.start.line == 0 && text_edits[0].range.start.character == 0 &&
-         (text_edits[0].range.end.line > static_cast<unsigned>(end_iter.get_line()) ||
-          (text_edits[0].range.end.line == static_cast<unsigned>(end_iter.get_line()) && text_edits[0].range.end.character >= static_cast<unsigned>(end_iter.get_line_offset())))) {
+         (text_edits[0].range.end.line > end_iter.get_line() ||
+          (text_edits[0].range.end.line == end_iter.get_line() && text_edits[0].range.end.character >= end_iter.get_line_offset()))) {
         replace_text(text_edits[0].new_text);
       }
       else {
@@ -574,20 +560,20 @@ void Source::LanguageProtocolView::setup_navigation_and_refactoring() {
       });
       result_processed.get_future().get();
 
-      auto embolden_token = [](std::string &line_, unsigned token_start_pos, unsigned token_end_pos) {
+      auto embolden_token = [](std::string &line_, int token_start_pos, int token_end_pos) {
         Glib::ustring line = line_;
-        if(token_start_pos > line.size() || token_end_pos > line.size())
+        if(static_cast<size_t>(token_start_pos) > line.size() || static_cast<size_t>(token_end_pos) > line.size())
           return;
 
         //markup token as bold
         size_t pos = 0;
         while((pos = line.find('&', pos)) != Glib::ustring::npos) {
           size_t pos2 = line.find(';', pos + 2);
-          if(token_start_pos > pos) {
+          if(static_cast<size_t>(token_start_pos) > pos) {
             token_start_pos += pos2 - pos;
             token_end_pos += pos2 - pos;
           }
-          else if(token_end_pos > pos)
+          else if(static_cast<size_t>(token_end_pos) > pos)
             token_end_pos += pos2 - pos;
           else
             break;
@@ -620,7 +606,7 @@ void Source::LanguageProtocolView::setup_navigation_and_refactoring() {
           }
         }
         if(view_it != views.end()) {
-          if(location.range.start.line < static_cast<unsigned>((*view_it)->get_buffer()->get_line_count())) {
+          if(location.range.start.line < (*view_it)->get_buffer()->get_line_count()) {
             auto start = (*view_it)->get_buffer()->get_iter_at_line(location.range.start.line);
             auto end = start;
             end.forward_to_line_end();
@@ -649,7 +635,7 @@ void Source::LanguageProtocolView::setup_navigation_and_refactoring() {
             }
           }
 
-          if(location.range.start.line < it->second.size()) {
+          if(static_cast<size_t>(location.range.start.line) < it->second.size()) {
             usage.second = Glib::Markup::escape_text(it->second[location.range.start.line]);
             embolden_token(usage.second, location.range.start.character, location.range.end.character);
           }
@@ -778,8 +764,8 @@ void Source::LanguageProtocolView::setup_navigation_and_refactoring() {
           // If entire buffer is replaced
           if(change.text_edits.size() == 1 &&
              change.text_edits[0].range.start.line == 0 && change.text_edits[0].range.start.character == 0 &&
-             (change.text_edits[0].range.end.line > static_cast<unsigned>(end_iter.get_line()) ||
-              (change.text_edits[0].range.end.line == static_cast<unsigned>(end_iter.get_line()) && change.text_edits[0].range.end.character >= static_cast<unsigned>(end_iter.get_line_offset()))))
+             (change.text_edits[0].range.end.line > end_iter.get_line() ||
+              (change.text_edits[0].range.end.line == end_iter.get_line() && change.text_edits[0].range.end.character >= end_iter.get_line_offset())))
             replace_text(change.text_edits[0].new_text);
           else {
             for(auto edit_it = change.text_edits.rbegin(); edit_it != change.text_edits.rend(); ++edit_it) {
@@ -812,10 +798,10 @@ void Source::LanguageProtocolView::setup_navigation_and_refactoring() {
             for(auto edit_it = change.text_edits.rbegin(); edit_it != change.text_edits.rend(); ++edit_it) {
               auto start_line = edit_it->range.start.line;
               auto end_line = edit_it->range.end.line;
-              if(start_line < lines_start_pos.size()) {
+              if(static_cast<size_t>(start_line) < lines_start_pos.size()) {
                 auto start = lines_start_pos[start_line] + edit_it->range.start.character;
-                unsigned end;
-                if(end_line >= lines_start_pos.size())
+                size_t end;
+                if(static_cast<size_t>(end_line) >= lines_start_pos.size())
                   end = buffer.size();
                 else
                   end = lines_start_pos[end_line] + edit_it->range.end.character;
@@ -1037,7 +1023,7 @@ void Source::LanguageProtocolView::show_type_tooltips(const Gdk::Rectangle &rect
   });
 }
 
-void Source::LanguageProtocolView::tag_similar_symbols() {
+void Source::LanguageProtocolView::apply_similar_symbol_tag() {
   if(!capabilities.document_highlight && !capabilities.references)
     return;
 
@@ -1063,7 +1049,7 @@ void Source::LanguageProtocolView::tag_similar_symbols() {
         }
       }
       dispatcher.post([this, ranges = std::move(ranges), current_request] {
-        if(current_request != request_count)
+        if(current_request != request_count || !similar_symbol_tag_applied)
           return;
         get_buffer()->remove_tag(similar_symbol_tag, get_buffer()->begin(), get_buffer()->end());
         for(auto &range : ranges) {
@@ -1071,6 +1057,25 @@ void Source::LanguageProtocolView::tag_similar_symbols() {
           auto end = get_iter_at_line_pos(range.end.line, range.end.character);
           get_buffer()->apply_tag(similar_symbol_tag, start, end);
         }
+      });
+    }
+  });
+}
+
+void Source::LanguageProtocolView::apply_clickable_tag(const Gtk::TextIter &iter) {
+  static int request_count = 0;
+  request_count++;
+  auto current_request = request_count;
+  auto line = iter.get_line();
+  auto offset = iter.get_line_offset();
+  client->write_request(this, "textDocument/definition", R"("textDocument":{"uri":"file://)" + file_path.string() + R"("}, "position": {"line": )" + std::to_string(line) + ", \"character\": " + std::to_string(offset) + "}", [this, current_request, line, offset](const boost::property_tree::ptree &result, bool error) {
+    if(!error && !result.empty()) {
+      dispatcher.post([this, current_request, line, offset] {
+        if(current_request != request_count || !clickable_tag_applied)
+          return;
+        get_buffer()->remove_tag(clickable_tag, get_buffer()->begin(), get_buffer()->end());
+        auto range = get_token_iters(get_iter_at_line_offset(line, offset));
+        get_buffer()->apply_tag(clickable_tag, range.first, range.second);
       });
     }
   });
@@ -1229,7 +1234,7 @@ void Source::LanguageProtocolView::setup_autocomplete() {
             }
             else {
               insert = label;
-              auto kind = it->second.get<unsigned>("kind", 0);
+              auto kind = it->second.get<int>("kind", 0);
               if(kind >= 2 && kind <= 3) {
                 bool found_bracket = false;
                 for(auto &chr : insert) {

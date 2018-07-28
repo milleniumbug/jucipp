@@ -91,8 +91,16 @@ namespace Source {
     Tooltips diagnostic_tooltips;
     Tooltips type_tooltips;
     sigc::connection delayed_tooltips_connection;
+
     Glib::RefPtr<Gtk::TextTag> similar_symbol_tag;
     sigc::connection delayed_tag_similar_symbols_connection;
+    virtual void apply_similar_symbol_tag() {}
+    bool similar_symbol_tag_applied = false;
+    Glib::RefPtr<Gtk::TextTag> clickable_tag;
+    sigc::connection delayed_tag_clickable_connection;
+    virtual void apply_clickable_tag(const Gtk::TextIter &iter) {}
+    bool clickable_tag_applied = false;
+
     virtual void show_diagnostic_tooltips(const Gdk::Rectangle &rectangle) { diagnostic_tooltips.show(rectangle); }
     void add_diagnostic_tooltip(const Gtk::TextIter &start, const Gtk::TextIter &end, bool error, std::function<void(const Glib::RefPtr<Gtk::TextBuffer> &)> &&set_buffer);
     void clear_diagnostic_tooltips();
@@ -125,7 +133,7 @@ namespace Source {
     bool interactive_completion = true;
 
   private:
-    void setup_tooltip_and_dialog_events();
+    void setup_signals();
     void setup_format_style(bool is_generic_view);
 
     Gsv::DrawSpacesFlags parse_show_whitespace_characters(const std::string &text);
