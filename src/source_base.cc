@@ -4,6 +4,7 @@
 #include "info.h"
 #include "terminal.h"
 #include <fstream>
+#include <gtksourceview/gtksource.h>
 
 Source::BaseView::BaseView(const boost::filesystem::path &file_path, const Glib::RefPtr<Gsv::Language> &language) : Gsv::View(), file_path(file_path), language(language), status_diagnostics(0, 0, 0) {
   load(true);
@@ -29,9 +30,32 @@ Source::BaseView::BaseView(const boost::filesystem::path &file_path, const Glib:
        language_id == "json" || language_id == "css")
       is_bracket_language = true;
   }
+
+#ifndef __APPLE__
+  set_tab_width(4); //Visual size of a \t hardcoded to be equal to visual size of 4 spaces. Buggy on OS X
+#endif
+  tab_char = Config::get().source.default_tab_char;
+  tab_size = Config::get().source.default_tab_size;
+  if(Config::get().source.auto_tab_char_and_size) {
+    auto tab_char_and_size = find_tab_char_and_size();
+    if(tab_char_and_size.second != 0) {
+      tab_char = tab_char_and_size.first;
+      tab_size = tab_char_and_size.second;
+    }
+  }
+  set_tab_char_and_size(tab_char, tab_size);
+
+  search_settings = gtk_source_search_settings_new();
+  gtk_source_search_settings_set_wrap_around(search_settings, true);
+  search_context = gtk_source_search_context_new(get_source_buffer()->gobj(), search_settings);
+  gtk_source_search_context_set_highlight(search_context, true);
+  g_signal_connect(search_context, "notify::occurrences-count", G_CALLBACK(search_occurrences_updated), this);
 }
 
 Source::BaseView::~BaseView() {
+  g_clear_object(&search_context);
+  g_clear_object(&search_settings);
+
   monitor_changed_connection.disconnect();
   delayed_monitor_changed_connection.disconnect();
 }
@@ -259,6 +283,171 @@ void Source::BaseView::check_last_write_time(std::time_t last_write_time_) {
   }
 }
 
+std::pair<char, unsigned> Source::BaseView::find_tab_char_and_size() {
+  if(language && language->get_id() == "python")
+    return {' ', 4};
+
+  std::map<char, size_t> tab_chars;
+  std::map<unsigned, size_t> tab_sizes;
+  auto iter = get_buffer()->begin();
+  long tab_count = -1;
+  long last_tab_count = 0;
+  bool single_quoted = false;
+  bool double_quoted = false;
+  //For bracket languages, TODO: add more language ids
+  if(is_bracket_language && !(language && language->get_id() == "html")) {
+    bool line_comment = false;
+    bool comment = false;
+    bool bracket_last_line = false;
+    char last_char = 0;
+    long last_tab_diff = -1;
+    while(iter) {
+      if(iter.starts_line()) {
+        line_comment = false;
+        single_quoted = false;
+        double_quoted = false;
+        tab_count = 0;
+        if(last_char == '{')
+          bracket_last_line = true;
+        else
+          bracket_last_line = false;
+      }
+      if(bracket_last_line && tab_count != -1) {
+        if(*iter == ' ') {
+          tab_chars[' ']++;
+          tab_count++;
+        }
+        else if(*iter == '\t') {
+          tab_chars['\t']++;
+          tab_count++;
+        }
+        else {
+          auto line_iter = iter;
+          char last_line_char = 0;
+          while(line_iter && !line_iter.ends_line()) {
+            if(*line_iter != ' ' && *line_iter != '\t')
+              last_line_char = *line_iter;
+            if(*line_iter == '(')
+              break;
+            line_iter.forward_char();
+          }
+          if(last_line_char == ':' || *iter == '#') {
+            tab_count = 0;
+            if((iter.get_line() + 1) < get_buffer()->get_line_count()) {
+              iter = get_buffer()->get_iter_at_line(iter.get_line() + 1);
+              continue;
+            }
+          }
+          else if(!iter.ends_line()) {
+            if(tab_count != last_tab_count)
+              tab_sizes[std::abs(tab_count - last_tab_count)]++;
+            last_tab_diff = std::abs(tab_count - last_tab_count);
+            last_tab_count = tab_count;
+            last_char = 0;
+          }
+        }
+      }
+
+      auto prev_iter = iter;
+      prev_iter.backward_char();
+      auto prev_prev_iter = prev_iter;
+      prev_prev_iter.backward_char();
+      if(!double_quoted && *iter == '\'' && !(*prev_iter == '\\' && *prev_prev_iter != '\\'))
+        single_quoted = !single_quoted;
+      else if(!single_quoted && *iter == '\"' && !(*prev_iter == '\\' && *prev_prev_iter != '\\'))
+        double_quoted = !double_quoted;
+      else if(!single_quoted && !double_quoted) {
+        auto next_iter = iter;
+        next_iter.forward_char();
+        if(*iter == '/' && *next_iter == '/')
+          line_comment = true;
+        else if(*iter == '/' && *next_iter == '*')
+          comment = true;
+        else if(*iter == '*' && *next_iter == '/') {
+          iter.forward_char();
+          iter.forward_char();
+          comment = false;
+        }
+      }
+      if(!single_quoted && !double_quoted && !comment && !line_comment && *iter != ' ' && *iter != '\t' && !iter.ends_line())
+        last_char = *iter;
+      if(!single_quoted && !double_quoted && !comment && !line_comment && *iter == '}' && tab_count != -1 && last_tab_diff != -1)
+        last_tab_count -= last_tab_diff;
+      if(*iter != ' ' && *iter != '\t')
+        tab_count = -1;
+
+      iter.forward_char();
+    }
+  }
+  else {
+    long para_count = 0;
+    while(iter) {
+      if(iter.starts_line())
+        tab_count = 0;
+      if(tab_count != -1 && para_count == 0 && single_quoted == false && double_quoted == false) {
+        if(*iter == ' ') {
+          tab_chars[' ']++;
+          tab_count++;
+        }
+        else if(*iter == '\t') {
+          tab_chars['\t']++;
+          tab_count++;
+        }
+        else if(!iter.ends_line()) {
+          if(tab_count != last_tab_count)
+            tab_sizes[std::abs(tab_count - last_tab_count)]++;
+          last_tab_count = tab_count;
+        }
+      }
+      auto prev_iter = iter;
+      prev_iter.backward_char();
+      auto prev_prev_iter = prev_iter;
+      prev_prev_iter.backward_char();
+      if(!double_quoted && *iter == '\'' && !(*prev_iter == '\\' && *prev_prev_iter != '\\'))
+        single_quoted = !single_quoted;
+      else if(!single_quoted && *iter == '\"' && !(*prev_iter == '\\' && *prev_prev_iter != '\\'))
+        double_quoted = !double_quoted;
+      else if(!single_quoted && !double_quoted) {
+        if(*iter == '(')
+          para_count++;
+        else if(*iter == ')')
+          para_count--;
+      }
+      if(*iter != ' ' && *iter != '\t')
+        tab_count = -1;
+
+      iter.forward_char();
+    }
+  }
+
+  char found_tab_char = 0;
+  size_t occurences = 0;
+  for(auto &tab_char : tab_chars) {
+    if(tab_char.second > occurences) {
+      found_tab_char = tab_char.first;
+      occurences = tab_char.second;
+    }
+  }
+  unsigned found_tab_size = 0;
+  occurences = 0;
+  for(auto &tab_size : tab_sizes) {
+    if(tab_size.second > occurences) {
+      found_tab_size = tab_size.first;
+      occurences = tab_size.second;
+    }
+  }
+  return {found_tab_char, found_tab_size};
+}
+
+void Source::BaseView::set_tab_char_and_size(char tab_char_, unsigned tab_size_) {
+  tab_char = tab_char_;
+  tab_size = tab_size_;
+
+  tab.clear();
+  for(unsigned c = 0; c < tab_size; c++)
+    tab += tab_char;
+}
+
 Gtk::TextIter Source::BaseView::get_iter_at_line_pos(int line, int pos) {
   return get_iter_at_line_index(line, pos);
 }
@@ -405,20 +594,303 @@ Gtk::TextIter Source::BaseView::get_tabs_end_iter() {
   return get_tabs_end_iter(get_buffer()->get_insert());
 }
 
-void Source::BaseView::place_cursor_at_next_diagnostic() {
-  auto insert_offset = get_buffer()->get_insert()->get_iter().get_offset();
-  for(auto offset : diagnostic_offsets) {
-    if(offset > insert_offset) {
-      get_buffer()->place_cursor(get_buffer()->get_iter_at_offset(offset));
-      scroll_to(get_buffer()->get_insert(), 0.0, 1.0, 0.5);
-      return;
+std::string Source::BaseView::get_token(Gtk::TextIter iter) {
+  auto start = iter;
+  auto end = iter;
+
+  while((*iter >= 'A' && *iter <= 'Z') || (*iter >= 'a' && *iter <= 'z') || (*iter >= '0' && *iter <= '9') || *iter == '_') {
+    start = iter;
+    if(!iter.backward_char())
+      break;
+  }
+  while((*end >= 'A' && *end <= 'Z') || (*end >= 'a' && *end <= 'z') || (*end >= '0' && *end <= '9') || *end == '_') {
+    if(!end.forward_char())
+      break;
+  }
+
+  return get_buffer()->get_text(start, end);
+}
+
+void Source::BaseView::cleanup_whitespace_characters() {
+  auto buffer = get_buffer();
+  buffer->begin_user_action();
+  for(int line = 0; line < buffer->get_line_count(); line++) {
+    auto iter = buffer->get_iter_at_line(line);
+    auto end_iter = get_iter_at_line_end(line);
+    if(iter == end_iter)
+      continue;
+    iter = end_iter;
+    while(!iter.starts_line() && (*iter == ' ' || *iter == '\t' || iter.ends_line()))
+      iter.backward_char();
+    if(*iter != ' ' && *iter != '\t')
+      iter.forward_char();
+    if(iter == end_iter)
+      continue;
+    buffer->erase(iter, end_iter);
+  }
+  auto iter = buffer->end();
+  if(!iter.starts_line())
+    buffer->insert(buffer->end(), "\n");
+  buffer->end_user_action();
+}
+
+void Source::BaseView::cleanup_whitespace_characters(const Gtk::TextIter &iter) {
+  auto start_blank_iter = iter;
+  auto end_blank_iter = iter;
+  while((*end_blank_iter == ' ' || *end_blank_iter == '\t') &&
+        !end_blank_iter.ends_line() && end_blank_iter.forward_char()) {
+  }
+  if(!start_blank_iter.starts_line()) {
+    start_blank_iter.backward_char();
+    while((*start_blank_iter == ' ' || *start_blank_iter == '\t') &&
+          !start_blank_iter.starts_line() && start_blank_iter.backward_char()) {
+    }
+    if(*start_blank_iter != ' ' && *start_blank_iter != '\t')
+      start_blank_iter.forward_char();
+  }
+
+  if(start_blank_iter.starts_line())
+    get_buffer()->erase(iter, end_blank_iter);
+  else
+    get_buffer()->erase(start_blank_iter, end_blank_iter);
+}
+
+void Source::BaseView::paste() {
+  class Guard {
+  public:
+    bool &value;
+    Guard(bool &value_) : value(value_) { value = true; }
+    ~Guard() { value = false; }
+  };
+  Guard guard{enable_multiple_cursors};
+
+  std::string text = Gtk::Clipboard::get()->wait_for_text();
+
+  //Replace carriage returns (which leads to crash) with newlines
+  for(size_t c = 0; c < text.size(); c++) {
+    if(text[c] == '\r') {
+      if((c + 1) < text.size() && text[c + 1] == '\n')
+        text.replace(c, 2, "\n");
+      else
+        text.replace(c, 1, "\n");
     }
   }
-  if(diagnostic_offsets.size() == 0)
-    Info::get().print("No diagnostics found in current buffer");
-  else {
-    auto iter = get_buffer()->get_iter_at_offset(*diagnostic_offsets.begin());
-    get_buffer()->place_cursor(iter);
-    scroll_to(get_buffer()->get_insert(), 0.0, 1.0, 0.5);
+
+  //Exception for when pasted text is only whitespaces
+  bool only_whitespaces = true;
+  for(auto &chr : text) {
+    if(chr != '\n' && chr != '\r' && chr != ' ' && chr != '\t') {
+      only_whitespaces = false;
+      break;
+    }
   }
+  if(only_whitespaces) {
+    Gtk::Clipboard::get()->set_text(text);
+    get_buffer()->paste_clipboard(Gtk::Clipboard::get());
+    scroll_to_cursor_delayed(this, false, false);
+    return;
+  }
+
+  get_buffer()->begin_user_action();
+  if(get_buffer()->get_has_selection()) {
+    Gtk::TextIter start, end;
+    get_buffer()->get_selection_bounds(start, end);
+    get_buffer()->erase(start, end);
+  }
+  auto iter = get_buffer()->get_insert()->get_iter();
+  auto tabs_end_iter = get_tabs_end_iter();
+  auto prefix_tabs = get_line_before(iter < tabs_end_iter ? iter : tabs_end_iter);
+
+  size_t start_line = 0;
+  size_t end_line = 0;
+  bool paste_line = false;
+  bool first_paste_line = true;
+  size_t paste_line_tabs = -1;
+  bool first_paste_line_has_tabs = false;
+  for(size_t c = 0; c < text.size(); c++) {
+    if(text[c] == '\n') {
+      end_line = c;
+      paste_line = true;
+    }
+    else if(c == text.size() - 1) {
+      end_line = c + 1;
+      paste_line = true;
+    }
+    if(paste_line) {
+      bool empty_line = true;
+      std::string line = text.substr(start_line, end_line - start_line);
+      size_t tabs = 0;
+      for(auto chr : line) {
+        if(chr == tab_char)
+          tabs++;
+        else {
+          empty_line = false;
+          break;
+        }
+      }
+      if(first_paste_line) {
+        if(tabs != 0) {
+          first_paste_line_has_tabs = true;
+          paste_line_tabs = tabs;
+        }
+        first_paste_line = false;
+      }
+      else if(!empty_line)
+        paste_line_tabs = std::min(paste_line_tabs, tabs);
+
+      start_line = end_line + 1;
+      paste_line = false;
+    }
+  }
+  if(paste_line_tabs == static_cast<size_t>(-1))
+    paste_line_tabs = 0;
+  start_line = 0;
+  end_line = 0;
+  paste_line = false;
+  first_paste_line = true;
+  for(size_t c = 0; c < text.size(); c++) {
+    if(text[c] == '\n') {
+      end_line = c;
+      paste_line = true;
+    }
+    else if(c == text.size() - 1) {
+      end_line = c + 1;
+      paste_line = true;
+    }
+    if(paste_line) {
+      std::string line = text.substr(start_line, end_line - start_line);
+      size_t line_tabs = 0;
+      for(auto chr : line) {
+        if(chr == tab_char)
+          line_tabs++;
+        else
+          break;
+      }
+      auto tabs = paste_line_tabs;
+      if(!(first_paste_line && !first_paste_line_has_tabs) && line_tabs < paste_line_tabs) {
+        tabs = line_tabs;
+      }
+
+      if(first_paste_line) {
+        if(first_paste_line_has_tabs)
+          get_buffer()->insert_at_cursor(text.substr(start_line + tabs, end_line - start_line - tabs));
+        else
+          get_buffer()->insert_at_cursor(text.substr(start_line, end_line - start_line));
+        first_paste_line = false;
+      }
+      else
+        get_buffer()->insert_at_cursor('\n' + prefix_tabs + text.substr(start_line + tabs, end_line - start_line - tabs));
+      start_line = end_line + 1;
+      paste_line = false;
+    }
+  }
+  // add final newline if present in text
+  if(text.size() > 0 && text.back() == '\n')
+    get_buffer()->insert_at_cursor('\n' + prefix_tabs);
+  get_buffer()->place_cursor(get_buffer()->get_insert()->get_iter());
+  get_buffer()->end_user_action();
+  scroll_to_cursor_delayed(this, false, false);
+}
+
+void Source::BaseView::search_highlight(const std::string &text, bool case_sensitive, bool regex) {
+  gtk_source_search_settings_set_case_sensitive(search_settings, case_sensitive);
+  gtk_source_search_settings_set_regex_enabled(search_settings, regex);
+  gtk_source_search_settings_set_search_text(search_settings, text.c_str());
+  search_occurrences_updated(nullptr, nullptr, this);
+}
+
+void Source::BaseView::search_forward() {
+  Gtk::TextIter insert, selection_bound;
+  get_buffer()->get_selection_bounds(insert, selection_bound);
+  auto &start = selection_bound;
+  Gtk::TextIter match_start, match_end;
+#if defined(GTK_SOURCE_MAJOR_VERSION) && (GTK_SOURCE_MAJOR_VERSION > 3 || (GTK_SOURCE_MAJOR_VERSION == 3 && GTK_SOURCE_MINOR_VERSION >= 22))
+  gboolean has_wrapped_around;
+  if(gtk_source_search_context_forward2(search_context, start.gobj(), match_start.gobj(), match_end.gobj(), &has_wrapped_around)) {
+    get_buffer()->select_range(match_start, match_end);
+    scroll_to(get_buffer()->get_insert());
+  }
+#else
+  if(gtk_source_search_context_forward(search_context, start.gobj(), match_start.gobj(), match_end.gobj())) {
+    get_buffer()->select_range(match_start, match_end);
+    scroll_to(get_buffer()->get_insert());
+  }
+#endif
+}
+
+void Source::BaseView::search_backward() {
+  Gtk::TextIter insert, selection_bound;
+  get_buffer()->get_selection_bounds(insert, selection_bound);
+  auto &start = insert;
+  Gtk::TextIter match_start, match_end;
+#if defined(GTK_SOURCE_MAJOR_VERSION) && (GTK_SOURCE_MAJOR_VERSION > 3 || (GTK_SOURCE_MAJOR_VERSION == 3 && GTK_SOURCE_MINOR_VERSION >= 22))
+  gboolean has_wrapped_around;
+  if(gtk_source_search_context_backward2(search_context, start.gobj(), match_start.gobj(), match_end.gobj(), &has_wrapped_around)) {
+    get_buffer()->select_range(match_start, match_end);
+    scroll_to(get_buffer()->get_insert());
+  }
+#else
+  if(gtk_source_search_context_backward(search_context, start.gobj(), match_start.gobj(), match_end.gobj())) {
+    get_buffer()->select_range(match_start, match_end);
+    scroll_to(get_buffer()->get_insert());
+  }
+#endif
+}
+
+void Source::BaseView::replace_forward(const std::string &replacement) {
+  Gtk::TextIter insert, selection_bound;
+  get_buffer()->get_selection_bounds(insert, selection_bound);
+  auto &start = insert;
+  Gtk::TextIter match_start, match_end;
+#if defined(GTK_SOURCE_MAJOR_VERSION) && (GTK_SOURCE_MAJOR_VERSION > 3 || (GTK_SOURCE_MAJOR_VERSION == 3 && GTK_SOURCE_MINOR_VERSION >= 22))
+  gboolean has_wrapped_around;
+  if(gtk_source_search_context_forward2(search_context, start.gobj(), match_start.gobj(), match_end.gobj(), &has_wrapped_around)) {
+    auto offset = match_start.get_offset();
+    gtk_source_search_context_replace2(search_context, match_start.gobj(), match_end.gobj(), replacement.c_str(), replacement.size(), nullptr);
+    Glib::ustring replacement_ustring = replacement;
+    get_buffer()->select_range(get_buffer()->get_iter_at_offset(offset), get_buffer()->get_iter_at_offset(offset + replacement_ustring.size()));
+    scroll_to(get_buffer()->get_insert());
+  }
+#else
+  if(gtk_source_search_context_forward(search_context, start.gobj(), match_start.gobj(), match_end.gobj())) {
+    auto offset = match_start.get_offset();
+    gtk_source_search_context_replace(search_context, match_start.gobj(), match_end.gobj(), replacement.c_str(), replacement.size(), nullptr);
+    Glib::ustring replacement_ustring = replacement;
+    get_buffer()->select_range(get_buffer()->get_iter_at_offset(offset), get_buffer()->get_iter_at_offset(offset + replacement_ustring.size()));
+    scroll_to(get_buffer()->get_insert());
+  }
+#endif
+}
+
+void Source::BaseView::replace_backward(const std::string &replacement) {
+  Gtk::TextIter insert, selection_bound;
+  get_buffer()->get_selection_bounds(insert, selection_bound);
+  auto &start = selection_bound;
+  Gtk::TextIter match_start, match_end;
+#if defined(GTK_SOURCE_MAJOR_VERSION) && (GTK_SOURCE_MAJOR_VERSION > 3 || (GTK_SOURCE_MAJOR_VERSION == 3 && GTK_SOURCE_MINOR_VERSION >= 22))
+  gboolean has_wrapped_around;
+  if(gtk_source_search_context_backward2(search_context, start.gobj(), match_start.gobj(), match_end.gobj(), &has_wrapped_around)) {
+    auto offset = match_start.get_offset();
+    gtk_source_search_context_replace2(search_context, match_start.gobj(), match_end.gobj(), replacement.c_str(), replacement.size(), nullptr);
+    get_buffer()->select_range(get_buffer()->get_iter_at_offset(offset), get_buffer()->get_iter_at_offset(offset + replacement.size()));
+    scroll_to(get_buffer()->get_insert());
+  }
+#else
+  if(gtk_source_search_context_backward(search_context, start.gobj(), match_start.gobj(), match_end.gobj())) {
+    auto offset = match_start.get_offset();
+    gtk_source_search_context_replace(search_context, match_start.gobj(), match_end.gobj(), replacement.c_str(), replacement.size(), nullptr);
+    get_buffer()->select_range(get_buffer()->get_iter_at_offset(offset), get_buffer()->get_iter_at_offset(offset + replacement.size()));
+    scroll_to(get_buffer()->get_insert());
+  }
+#endif
+}
+
+void Source::BaseView::replace_all(const std::string &replacement) {
+  gtk_source_search_context_replace_all(search_context, replacement.c_str(), replacement.size(), nullptr);
+}
+
+void Source::BaseView::search_occurrences_updated(GtkWidget *widget, GParamSpec *property, gpointer data) {
+  auto view = static_cast<Source::BaseView *>(data);
+  if(view->update_search_occurrences)
+    view->update_search_occurrences(gtk_source_search_context_get_occurrences_count(view->search_context));
 }

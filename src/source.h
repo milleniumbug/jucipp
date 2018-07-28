@@ -58,18 +58,7 @@ namespace Source {
     ~View() override;
 
     bool save() override;
-
     void configure() override;
-
-    void search_highlight(const std::string &text, bool case_sensitive, bool regex);
-    std::function<void(int number)> update_search_occurrences;
-    void search_forward();
-    void search_backward();
-    void replace_forward(const std::string &replacement);
-    void replace_backward(const std::string &replacement);
-    void replace_all(const std::string &replacement);
-
-    void paste();
 
     std::function<void()> non_interactive_completion;
     std::function<void(bool)> format_style;
@@ -92,9 +81,6 @@ namespace Source {
     void hide_tooltips() override;
     void hide_dialogs() override;
 
-    void set_tab_char_and_size(char tab_char, unsigned tab_size);
-    std::pair<char, unsigned> get_tab_char_and_size() { return {tab_char, tab_size}; }
-
     bool soft_reparse_needed = false;
     bool full_reparse_needed = false;
     virtual void soft_reparse(bool delayed = false) { soft_reparse_needed = false; }
@@ -110,6 +96,8 @@ namespace Source {
     virtual void show_diagnostic_tooltips(const Gdk::Rectangle &rectangle) { diagnostic_tooltips.show(rectangle); }
     void add_diagnostic_tooltip(const Gtk::TextIter &start, const Gtk::TextIter &end, bool error, std::function<void(const Glib::RefPtr<Gtk::TextBuffer> &)> &&set_buffer);
     void clear_diagnostic_tooltips();
+    std::set<int> diagnostic_offsets;
+    void place_cursor_at_next_diagnostic();
     virtual void show_type_tooltips(const Gdk::Rectangle &rectangle) {}
     gdouble on_motion_last_x = 0.0;
     gdouble on_motion_last_y = 0.0;
@@ -124,10 +112,6 @@ namespace Source {
     long symbol_count(Gtk::TextIter iter, unsigned int positive_char, unsigned int negative_char);
     bool is_templated_function(Gtk::TextIter iter, Gtk::TextIter &parenthesis_end_iter);
 
-    std::string get_token(Gtk::TextIter iter);
-
-    void cleanup_whitespace_characters_on_return(const Gtk::TextIter &iter);
-
     bool on_key_press_event(GdkEventKey *key) override;
     bool on_key_press_event_basic(GdkEventKey *key);
     bool on_key_press_event_bracket_language(GdkEventKey *key);
@@ -135,11 +119,6 @@ namespace Source {
     bool on_key_press_event_smart_inserts(GdkEventKey *key);
     bool on_button_press_event(GdkEventButton *event) override;
     bool on_motion_notify_event(GdkEventMotion *motion_event) override;
-
-    std::pair<char, unsigned> find_tab_char_and_size();
-    unsigned tab_size;
-    char tab_char;
-    std::string tab;
 
     /// After autocomplete, arguments could be marked so that one can use tab to select the next argument
     bool keep_argument_marks = false;
@@ -149,12 +128,7 @@ namespace Source {
     void setup_tooltip_and_dialog_events();
     void setup_format_style(bool is_generic_view);
 
-    void cleanup_whitespace_characters();
     Gsv::DrawSpacesFlags parse_show_whitespace_characters(const std::string &text);
-
-    GtkSourceSearchContext *search_context;
-    GtkSourceSearchSettings *search_settings;
-    static void search_occurrences_updated(GtkWidget *widget, GParamSpec *property, gpointer data);
 
     sigc::connection renderer_activate_connection;
 
@@ -163,7 +137,6 @@ namespace Source {
     guint previous_non_modifier_keyval = 0;
 
     bool multiple_cursors_signals_set = false;
-    bool multiple_cursors_use = false;
     std::vector<std::pair<Glib::RefPtr<Gtk::TextBuffer::Mark>, int>> multiple_cursors_extra_cursors;
     Glib::RefPtr<Gtk::TextBuffer::Mark> multiple_cursors_last_insert;
     int multiple_cursors_erase_backward_length;

@@ -28,8 +28,8 @@ namespace Source {
     virtual void hide_tooltips() = 0;
     virtual void hide_dialogs() = 0;
 
-    /// Use with care, view could be destroyed while this functions is running!
-    std::function<void(BaseView *view, bool center, bool show_tooltips)> scroll_to_cursor_delayed = [](BaseView *view, bool center, bool show_tooltips) {};
+    void set_tab_char_and_size(char tab_char, unsigned tab_size);
+    std::pair<char, unsigned> get_tab_char_and_size() { return {tab_char, tab_size}; }
 
     /// Safely returns iter given line and an offset using either byte index or character offset. Defaults to using byte index.
     virtual Gtk::TextIter get_iter_at_line_pos(int line, int pos);
@@ -48,12 +48,47 @@ namespace Source {
     /// Safely places cursor at line index
     void place_cursor_at_line_index(int line, int index);
 
+    /// Use with care, view could be destroyed while this functions is running!
+    std::function<void(BaseView *view, bool center, bool show_tooltips)> scroll_to_cursor_delayed = [](BaseView *view, bool center, bool show_tooltips) {};
+
+    std::function<void(BaseView *view)> update_tab_label;
+    std::function<void(BaseView *view)> update_status_location;
+    std::function<void(BaseView *view)> update_status_file_path;
+    std::function<void(BaseView *view)> update_status_diagnostics;
+    std::function<void(BaseView *view)> update_status_state;
+    std::tuple<size_t, size_t, size_t> status_diagnostics;
+    std::string status_state;
+    std::function<void(BaseView *view)> update_status_branch;
+    std::string status_branch;
+    std::function<void(int number)> update_search_occurrences;
+
+    void paste();
+
+    void search_highlight(const std::string &text, bool case_sensitive, bool regex);
+    void search_forward();
+    void search_backward();
+    void replace_forward(const std::string &replacement);
+    void replace_backward(const std::string &replacement);
+    void replace_all(const std::string &replacement);
+
+    bool disable_spellcheck = false;
+
+  private:
+    GtkSourceSearchContext *search_context;
+    GtkSourceSearchSettings *search_settings;
+    static void search_occurrences_updated(GtkWidget *widget, GParamSpec *property, gpointer data);
+
   protected:
     std::time_t last_write_time;
     void monitor_file();
     void check_last_write_time(std::time_t last_write_time_ = static_cast<std::time_t>(-1));
 
     bool is_bracket_language = false;
+
+    unsigned tab_size;
+    char tab_char;
+    std::string tab;
+    std::pair<char, unsigned> find_tab_char_and_size();
 
     /// Move iter to line start. Depending on iter position, before or after indentation.
     /// Works with wrapped lines.
@@ -75,20 +110,10 @@ namespace Source {
     Gtk::TextIter get_tabs_end_iter(int line_nr);
     Gtk::TextIter get_tabs_end_iter();
 
-    std::set<int> diagnostic_offsets;
-    void place_cursor_at_next_diagnostic();
+    std::string get_token(Gtk::TextIter iter);
+    void cleanup_whitespace_characters();
+    void cleanup_whitespace_characters(const Gtk::TextIter &iter);
 
-  public:
-    std::function<void(BaseView *view)> update_tab_label;
-    std::function<void(BaseView *view)> update_status_location;
-    std::function<void(BaseView *view)> update_status_file_path;
-    std::function<void(BaseView *view)> update_status_diagnostics;
-    std::function<void(BaseView *view)> update_status_state;
-    std::tuple<size_t, size_t, size_t> status_diagnostics;
-    std::string status_state;
-    std::function<void(BaseView *view)> update_status_branch;
-    std::string status_branch;
-
-    bool disable_spellcheck = false;
+    bool enable_multiple_cursors = false;
   };
 } // namespace Source
