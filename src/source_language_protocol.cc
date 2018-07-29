@@ -896,7 +896,7 @@ void Source::LanguageProtocolView::update_diagnostics(std::vector<LanguageProtoc
           buffer->insert_at_cursor(diagnostic.related_informations[i].message);
           buffer->insert_at_cursor(": ");
           auto pos = buffer->get_insert()->get_iter();
-          buffer->insert_with_tag(pos, link, "link");
+          buffer->insert_with_tag(pos, link, link_tag);
           if(i != diagnostic.related_informations.size() - 1)
             buffer->insert_at_cursor("\n");
         }
@@ -979,7 +979,7 @@ void Source::LanguageProtocolView::show_type_tooltips(const Gdk::Rectangle &rect
           while(((*end >= 'A' && *end <= 'Z') || (*end >= 'a' && *end <= 'z') || (*end >= '0' && *end <= '9') || *end == '_') && end.forward_char()) {
           }
           type_tooltips.emplace_back(this, get_buffer()->create_mark(start), get_buffer()->create_mark(end), [this, offset, content](const Glib::RefPtr<Gtk::TextBuffer> &buffer) {
-            buffer->insert(buffer->get_insert()->get_iter(), *content);
+            insert_with_links_tagged(buffer, *content);
 
 #ifdef JUCI_ENABLE_DEBUG
             if(language_id == "rust" && capabilities.definition) {

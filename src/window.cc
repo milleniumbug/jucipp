@@ -724,9 +724,9 @@ void Window::set_menu_actions() {
     if(auto view = Notebook::get().get_current_view()) {
       if(view->get_token_data) {
         auto data = view->get_token_data();
-        std::string url;
+        std::string uri;
         if(data.size() == 1)
-          url = data[0];
+          uri = data[0];
         else if(data.size() > 1) {
           auto documentation_search = Config::get().source.documentation_searches.find(data[0]);
           if(documentation_search != Config::get().source.documentation_searches.end()) {
@@ -748,22 +748,12 @@ void Window::set_menu_actions() {
                 query = documentation_search->second.queries.find("@any");
 
               if(query != documentation_search->second.queries.end())
-                url = query->second + token_query;
+                uri = query->second + token_query;
             }
           }
         }
-        if(!url.empty()) {
-#ifdef __APPLE__
-          Terminal::get().process("open \"" + url + "\"");
-#else
-          GError *error = nullptr;
-#if GTK_VERSION_GE(3, 22)
-          gtk_show_uri_on_window(nullptr, url.c_str(), GDK_CURRENT_TIME, &error);
-#else
-          gtk_show_uri(nullptr, url.c_str(), GDK_CURRENT_TIME, &error);
-#endif
-          g_clear_error(&error);
-#endif
+        if(!uri.empty()) {
+          Notebook::get().open_uri(uri);
         }
       }
     }

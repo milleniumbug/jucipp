@@ -417,6 +417,21 @@ void Notebook::open(const boost::filesystem::path &file_path_, size_t notebook_i
   focus_view(source_view);
 }
 
+void Notebook::open_uri(const std::string &uri) {
+#ifdef __APPLE__
+  Terminal::get().process("open " + filesystem::escape_argument(uri));
+#else
+  GError *error = nullptr;
+#if GTK_VERSION_GE(3, 22)
+  gtk_show_uri_on_window(nullptr, uri.c_str(), GDK_CURRENT_TIME, &error);
+#else
+  gtk_show_uri(nullptr, uri.c_str(), GDK_CURRENT_TIME, &error);
+#endif
+  g_clear_error(&error);
+#endif
+}
+
+
 void Notebook::configure(size_t index) {
   auto source_font_description = Pango::FontDescription(Config::get().source.font);
   auto source_map_font_desc = Pango::FontDescription(static_cast<std::string>(source_font_description.get_family()) + " " + Config::get().source.map_font_size);

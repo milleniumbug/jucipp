@@ -952,6 +952,20 @@ void Source::View::hide_dialogs() {
     CompletionDialog::get()->hide();
 }
 
+void Source::View::insert_with_links_tagged(const Glib::RefPtr<Gtk::TextBuffer> &buffer, const std::string &text) {
+  static std::regex http_regex("(https?://[a-zA-Z0-9\\-._~:/?#\\[\\]@!$&'()*+,;=]+[a-zA-Z0-9\\-_~/@$*+;=])");
+  std::smatch sm;
+  std::sregex_iterator it(text.begin(), text.end(), http_regex);
+  std::sregex_iterator end;
+  size_t start_pos = 0;
+  for(; it != end; ++it) {
+    buffer->insert(buffer->get_insert()->get_iter(), &text[start_pos], &text[it->position()]);
+    buffer->insert_with_tag(buffer->get_insert()->get_iter(), &text[it->position()], &text[it->position() + it->length()], link_tag);
+    start_pos = it->position() + it->length();
+  }
+  buffer->insert(buffer->get_insert()->get_iter(), &text[start_pos], &text[text.size()]);
+}
+
 void Source::View::add_diagnostic_tooltip(const Gtk::TextIter &start, const Gtk::TextIter &end, bool error, std::function<void(const Glib::RefPtr<Gtk::TextBuffer> &)> &&set_buffer) {
   diagnostic_offsets.emplace(start.get_offset());
 

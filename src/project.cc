@@ -983,21 +983,7 @@ void Project::JavaScript::compile_and_run() {
 }
 
 void Project::HTML::compile_and_run() {
-  auto uri = Notebook::get().get_current_view()->file_path.string();
-#ifdef __APPLE__
-  Terminal::get().process("open " + filesystem::escape_argument(uri));
-#else
-#ifdef __linux
-  uri = "file://" + uri;
-#endif
-  GError *error = nullptr;
-#if GTK_VERSION_GE(3, 22)
-  gtk_show_uri_on_window(nullptr, uri.c_str(), GDK_CURRENT_TIME, &error);
-#else
-  gtk_show_uri(nullptr, uri.c_str(), GDK_CURRENT_TIME, &error);
-#endif
-  g_clear_error(&error);
-#endif
+  Notebook::get().open_uri(std::string("file://") + Notebook::get().get_current_view()->file_path.string());
 }
 
 std::pair<std::string, std::string> Project::Rust::get_run_arguments() {

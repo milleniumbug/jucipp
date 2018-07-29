@@ -101,6 +101,9 @@ namespace Source {
     virtual void apply_clickable_tag(const Gtk::TextIter &iter) {}
     bool clickable_tag_applied = false;
 
+    Glib::RefPtr<Gtk::TextTag> link_tag; /// Used in tooltips
+    void insert_with_links_tagged(const Glib::RefPtr<Gtk::TextBuffer> &buffer, const std::string &text);
+
     virtual void show_diagnostic_tooltips(const Gdk::Rectangle &rectangle) { diagnostic_tooltips.show(rectangle); }
     void add_diagnostic_tooltip(const Gtk::TextIter &start, const Gtk::TextIter &end, bool error, std::function<void(const Glib::RefPtr<Gtk::TextBuffer> &)> &&set_buffer);
     void clear_diagnostic_tooltips();
@@ -150,8 +153,6 @@ namespace Source {
     int multiple_cursors_erase_backward_length;
     int multiple_cursors_erase_forward_length;
     bool on_key_press_event_multiple_cursors(GdkEventKey *key);
-
-    Glib::RefPtr<Gtk::TextTag> link_tag; /// Used in tooltips
   };
 
   class GenericView : public View {

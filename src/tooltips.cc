@@ -116,6 +116,12 @@ void Tooltip::show(bool disregard_drawn, const std::function<void()> &on_motion)
           auto end = iter;
           end.forward_to_tag_toggle(link_tag);
           std::string text = tooltip_text_view->get_buffer()->get_text(start, end);
+
+          if(text.compare(0, 7, "http://") == 0 || text.compare(0, 8, "https://") == 0) {
+            Notebook::get().open_uri(text);
+            return true;
+          }
+
           static std::regex regex("^([^:]+):([^:]+):([^:]+)$");
           std::smatch sm;
           if(std::regex_match(text, sm, regex)) {

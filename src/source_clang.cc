@@ -389,7 +389,7 @@ void Source::ClangViewParse::show_type_tooltips(const Gdk::Rectangle &rectangle)
               buffer->insert(buffer->get_insert()->get_iter(), "Type: " + token.get_cursor().get_type_description());
               auto brief_comment = token.get_cursor().get_brief_comments();
               if(brief_comment != "")
-                buffer->insert(buffer->get_insert()->get_iter(), "\n\n" + brief_comment);
+                insert_with_links_tagged(buffer, "\n\n" + brief_comment);
 
 #ifdef JUCI_ENABLE_DEBUG
               if(Debug::LLDB::get().is_stopped()) {
