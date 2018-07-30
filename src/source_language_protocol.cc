@@ -16,6 +16,29 @@
 
 const std::string flow_coverage_message = "Not covered by Flow";
 
+LanguageProtocol::Offset::Offset(const boost::property_tree::ptree &pt) : line(pt.get<int>("line")), character(pt.get<int>("character")) {}
+
+LanguageProtocol::Range::Range(const boost::property_tree::ptree &pt) : start(pt.get_child("start")), end(pt.get_child("end")) {}
+
+LanguageProtocol::Location::Location(const boost::property_tree::ptree &pt, std::string uri_) : range(pt.get_child("range")) {
+  if(uri_.empty()) {
+    uri = pt.get<std::string>("uri");
+    uri.erase(0, 7);
+  }
+  else
+    uri = std::move(uri_);
+}
+
+LanguageProtocol::Diagnostic::RelatedInformation::RelatedInformation(const boost::property_tree::ptree &pt) : message(pt.get<std::string>("message")), location(pt.get_child("location")) {}
+
+LanguageProtocol::Diagnostic::Diagnostic(const boost::property_tree::ptree &pt) : message(pt.get<std::string>("message")), range(pt.get_child("range")), severity(pt.get<int>("severity", 0)) {
+  auto related_information_it = pt.get_child("relatedInformation", boost::property_tree::ptree());
+  for(auto it = related_information_it.begin(); it != related_information_it.end(); ++it)
+    related_informations.emplace_back(it->second);
+}
+
+LanguageProtocol::TextEdit::TextEdit(const boost::property_tree::ptree &pt, std::string new_text_) : range(pt.get_child("range")), new_text(new_text_.empty() ? pt.get<std::string>("newText") : std::move(new_text_)) {}
+
 LanguageProtocol::Client::Client(std::string root_uri_, std::string language_id_) : root_uri(std::move(root_uri_)), language_id(std::move(language_id_)) {
   process = std::make_unique<TinyProcessLib::Process>(language_id + "-language-server", root_uri, [this](const char *bytes, size_t n) {
     server_message_stream.write(bytes, n);

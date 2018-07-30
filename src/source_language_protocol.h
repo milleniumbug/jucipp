@@ -16,30 +16,21 @@ namespace Source {
 namespace LanguageProtocol {
   class Offset {
   public:
-    Offset(const boost::property_tree::ptree &pt) : line(pt.get<int>("line")),
-                                                    character(pt.get<int>("character")) {}
+    Offset(const boost::property_tree::ptree &pt);
     int line;
     int character;
   };
 
   class Range {
   public:
-    Range(const boost::property_tree::ptree &pt) : start(pt.get_child("start")),
-                                                   end(pt.get_child("end")) {}
+    Range(const boost::property_tree::ptree &pt);
     Range() = default;
     Offset start, end;
   };
 
   class Location {
   public:
-    Location(const boost::property_tree::ptree &pt, std::string uri_ = {}) : range(pt.get_child("range")) {
-      if(uri_.empty()) {
-        uri = pt.get<std::string>("uri");
-        uri.erase(0, 7);
-      }
-      else
-        uri = std::move(uri_);
-    }
+    Location(const boost::property_tree::ptree &pt, std::string uri_ = {});
     std::string uri;
     Range range;
   };
@@ -48,19 +39,12 @@ namespace LanguageProtocol {
   public:
     class RelatedInformation {
     public:
-      RelatedInformation(const boost::property_tree::ptree &pt) : message(pt.get<std::string>("message")),
-                                                                  location(pt.get_child("location")) {}
+      RelatedInformation(const boost::property_tree::ptree &pt);
       std::string message;
       Location location;
     };
 
-    Diagnostic(const boost::property_tree::ptree &pt) : message(pt.get<std::string>("message")),
-                                                        range(pt.get_child("range")),
-                                                        severity(pt.get<int>("severity", 0)) {
-      auto related_information_it = pt.get_child("relatedInformation", boost::property_tree::ptree());
-      for(auto it = related_information_it.begin(); it != related_information_it.end(); ++it)
-        related_informations.emplace_back(it->second);
-    }
+    Diagnostic(const boost::property_tree::ptree &pt);
     std::string message;
     Range range;
     int severity;
@@ -69,8 +53,7 @@ namespace LanguageProtocol {
 
   class TextEdit {
   public:
-    TextEdit(const boost::property_tree::ptree &pt, std::string new_text_ = {}) : range(pt.get_child("range")),
-                                                                                  new_text(new_text_.empty() ? pt.get<std::string>("newText") : std::move(new_text_)) {}
+    TextEdit(const boost::property_tree::ptree &pt, std::string new_text_ = {});
     Range range;
     std::string new_text;
   };
