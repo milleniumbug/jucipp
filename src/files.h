@@ -36,7 +36,7 @@ const std::string default_config_file = R"RAW({
         "format_style_on_save_comment": "Performs style format on save if supported on language in buffer",
         "format_style_on_save": false,
         "format_style_on_save_if_style_file_found_comment": "Format style if format file is found, even if format_style_on_save is false",
-        "format_style_on_save_if_style_file_found": false,
+        "format_style_on_save_if_style_file_found": true,
         "smart_brackets_comment": "If smart_inserts is enabled, this option is automatically enabled. When inserting an already closed bracket, the cursor might instead be moved, avoiding the need of arrow keys after autocomplete",
         "smart_brackets": true,
         "smart_inserts_comment": "When for instance inserting (, () gets inserted. Applies to: (), [], \", '. Also enables pressing ; inside an expression before a final ) to insert ; at the end of line, and deletions of empty insertions",
