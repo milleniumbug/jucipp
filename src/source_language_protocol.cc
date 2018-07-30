@@ -1063,9 +1063,12 @@ void Source::LanguageProtocolView::apply_similar_symbol_tag() {
   client->write_request(this, method, R"("textDocument":{"uri":"file://)" + file_path.string() + R"("}, "position": {"line": )" + std::to_string(iter.get_line()) + ", \"character\": " + std::to_string(iter.get_line_offset()) + R"(}, "context": {"includeDeclaration": true})", [this, current_request](const boost::property_tree::ptree &result, bool error) {
     if(!error) {
       std::vector<LanguageProtocol::Range> ranges;
+      std::string uri;
+      if(!capabilities.document_highlight)
+        uri = "file://" + file_path.string();
       for(auto it = result.begin(); it != result.end(); ++it) {
         try {
-          if(capabilities.document_highlight || it->second.get<std::string>("uri") == file_path)
+          if(capabilities.document_highlight || it->second.get<std::string>("uri") == uri)
             ranges.emplace_back(it->second.get_child("range"));
         }
         catch(...) {
