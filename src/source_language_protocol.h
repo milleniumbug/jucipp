@@ -30,8 +30,8 @@ namespace LanguageProtocol {
 
   class Location {
   public:
-    Location(const boost::property_tree::ptree &pt, std::string uri_ = {});
-    std::string uri;
+    Location(const boost::property_tree::ptree &pt, std::string file_ = {});
+    std::string file;
     Range range;
   };
 

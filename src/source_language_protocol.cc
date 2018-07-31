@@ -20,13 +20,13 @@ LanguageProtocol::Offset::Offset(const boost::property_tree::ptree &pt) : line(p
 
 LanguageProtocol::Range::Range(const boost::property_tree::ptree &pt) : start(pt.get_child("start")), end(pt.get_child("end")) {}
 
-LanguageProtocol::Location::Location(const boost::property_tree::ptree &pt, std::string uri_) : range(pt.get_child("range")) {
-  if(uri_.empty()) {
-    uri = pt.get<std::string>("uri");
-    uri.erase(0, 7);
+LanguageProtocol::Location::Location(const boost::property_tree::ptree &pt, std::string file_) : range(pt.get_child("range")) {
+  if(file_.empty()) {
+    file = pt.get<std::string>("uri");
+    file.erase(0, 7);
   }
   else
-    uri = std::move(uri_);
+    file = std::move(file_);
 }
 
 LanguageProtocol::Diagnostic::RelatedInformation::RelatedInformation(const boost::property_tree::ptree &pt) : message(pt.get<std::string>("message")), location(pt.get_child("location")) {}
@@ -619,11 +619,11 @@ void Source::LanguageProtocolView::setup_navigation_and_refactoring() {
       auto c = static_cast<size_t>(-1);
       for(auto &location : locations) {
         ++c;
-        usages.emplace_back(Offset(location.range.start.line, location.range.start.character, location.uri), std::string());
+        usages.emplace_back(Offset(location.range.start.line, location.range.start.character, location.file), std::string());
         auto &usage = usages.back();
         auto view_it = views.end();
         for(auto it = views.begin(); it != views.end(); ++it) {
-          if(location.uri == (*it)->file_path) {
+          if(location.file == (*it)->file_path) {
             view_it = it;
             break;
           }
@@ -638,9 +638,9 @@ void Source::LanguageProtocolView::setup_navigation_and_refactoring() {
           }
         }
         else {
-          auto it = file_lines.find(location.uri);
+          auto it = file_lines.find(location.file);
           if(it == file_lines.end()) {
-            std::ifstream ifs(location.uri);
+            std::ifstream ifs(location.file);
             if(ifs) {
               std::vector<std::string> lines;
               std::string line;
@@ -649,11 +649,11 @@ void Source::LanguageProtocolView::setup_navigation_and_refactoring() {
                   line.pop_back();
                 lines.emplace_back(line);
               }
-              auto pair = file_lines.emplace(location.uri, lines);
+              auto pair = file_lines.emplace(location.file, lines);
               it = pair.first;
             }
             else {
-              auto pair = file_lines.emplace(location.uri, std::vector<std::string>());
+              auto pair = file_lines.emplace(location.file, std::vector<std::string>());
               it = pair.first;
             }
           }
@@ -693,7 +693,7 @@ void Source::LanguageProtocolView::setup_navigation_and_refactoring() {
     rename_similar_tokens = [this](const std::string &text) {
       class Changes {
       public:
-        std::string uri;
+        std::string file;
         std::vector<LanguageProtocol::TextEdit> text_edits;
       };
 
@@ -717,13 +717,13 @@ void Source::LanguageProtocolView::setup_navigation_and_refactoring() {
               auto changes_it = result.find("changes");
               if(changes_it != result.not_found()) {
                 for(auto file_it = changes_it->second.begin(); file_it != changes_it->second.end(); ++file_it) {
-                  auto uri = file_it->first;
-                  uri.erase(0, 7);
-                  if(filesystem::file_in_path(uri, project_path)) {
+                  auto file = file_it->first;
+                  file.erase(0, 7);
+                  if(filesystem::file_in_path(file, project_path)) {
                     std::vector<LanguageProtocol::TextEdit> edits;
                     for(auto edit_it = file_it->second.begin(); edit_it != file_it->second.end(); ++edit_it)
                       edits.emplace_back(edit_it->second);
-                    changes.emplace_back(Changes{std::move(uri), std::move(edits)});
+                    changes.emplace_back(Changes{std::move(file), std::move(edits)});
                   }
                 }
               }
@@ -732,14 +732,14 @@ void Source::LanguageProtocolView::setup_navigation_and_refactoring() {
                 for(auto change_it = changes_pt.begin(); change_it != changes_pt.end(); ++change_it) {
                   auto document_it = change_it->second.find("textDocument");
                   if(document_it != change_it->second.not_found()) {
-                    auto uri = document_it->second.get<std::string>("uri", "");
-                    uri.erase(0, 7);
-                    if(filesystem::file_in_path(uri, project_path)) {
+                    auto file = document_it->second.get<std::string>("uri", "");
+                    file.erase(0, 7);
+                    if(filesystem::file_in_path(file, project_path)) {
                       std::vector<LanguageProtocol::TextEdit> edits;
                       auto edits_pt = change_it->second.get_child("edits", boost::property_tree::ptree());
                       for(auto edit_it = edits_pt.begin(); edit_it != edits_pt.end(); ++edit_it)
                         edits.emplace_back(edit_it->second);
-                      changes.emplace_back(Changes{std::move(uri), std::move(edits)});
+                      changes.emplace_back(Changes{std::move(file), std::move(edits)});
                     }
                   }
                 }
@@ -774,7 +774,7 @@ void Source::LanguageProtocolView::setup_navigation_and_refactoring() {
       for(auto &change : changes) {
         auto view_it = views.end();
         for(auto it = views.begin(); it != views.end(); ++it) {
-          if((*it)->file_path == change.uri) {
+          if((*it)->file_path == change.file) {
             view_it = it;
             break;
           }
@@ -807,11 +807,11 @@ void Source::LanguageProtocolView::setup_navigation_and_refactoring() {
         else {
           Glib::ustring buffer;
           {
-            std::ifstream stream(change.uri, std::ifstream::binary);
+            std::ifstream stream(change.file, std::ifstream::binary);
             if(stream)
               buffer.assign(std::istreambuf_iterator<char>(stream), std::istreambuf_iterator<char>());
           }
-          std::ofstream stream(change.uri, std::ifstream::binary);
+          std::ofstream stream(change.file, std::ifstream::binary);
           if(!buffer.empty() && stream) {
             std::vector<size_t> lines_start_pos = {0};
             for(size_t c = 0; c < buffer.size(); ++c) {
@@ -837,7 +837,7 @@ void Source::LanguageProtocolView::setup_navigation_and_refactoring() {
             changes_renamed.emplace_back(&change);
           }
           else
-            Terminal::get().print("Error: could not write to file " + change.uri + '\n', true);
+            Terminal::get().print("Error: could not write to file " + change.file + '\n', true);
         }
       }
 
@@ -910,7 +910,7 @@ void Source::LanguageProtocolView::update_diagnostics(std::vector<LanguageProtoc
         buffer->insert_at_cursor(diagnostic.message);
 
         for(size_t i = 0; i < diagnostic.related_informations.size(); ++i) {
-          auto link = filesystem::get_relative_path(diagnostic.related_informations[i].location.uri, file_path.parent_path()).string();
+          auto link = filesystem::get_relative_path(diagnostic.related_informations[i].location.file, file_path.parent_path()).string();
           link += ':' + std::to_string(diagnostic.related_informations[i].location.range.start.line + 1);
           link += ':' + std::to_string(diagnostic.related_informations[i].location.range.start.character + 1);
 
@@ -1115,7 +1115,7 @@ Source::Offset Source::LanguageProtocolView::get_declaration(const Gtk::TextIter
       for(auto it = result.begin(); it != result.end(); ++it) {
         try {
           LanguageProtocol::Location location(it->second);
-          offset->file_path = std::move(location.uri);
+          offset->file_path = std::move(location.file);
           offset->line = location.range.start.line;
           offset->index = location.range.start.character;
           break; // TODO: can a language server return several definitions?

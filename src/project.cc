@@ -719,7 +719,7 @@ void Project::LanguageProtocol::show_symbols() {
           for(auto it = result.begin(); it != result.end(); ++it) {
             try {
               ::LanguageProtocol::Location location(it->second.get_child("location"));
-              if(filesystem::file_in_path(location.uri, *project_path)) {
+              if(filesystem::file_in_path(location.file, *project_path)) {
                 locations->emplace_back(std::move(location));
                 names.emplace_back(it->second.get<std::string>("name"));
               }
@@ -732,7 +732,7 @@ void Project::LanguageProtocol::show_symbols() {
       });
       result_processed.get_future().get();
       for(size_t c = 0; c < locations->size() && c < names.size(); ++c)
-        SelectionDialog::get()->add_row(filesystem::get_relative_path((*locations)[c].uri, *project_path).string() + ':' + std::to_string((*locations)[c].range.start.line + 1) + ':' + std::to_string((*locations)[c].range.start.character + 1) + ": " + names[c]);
+        SelectionDialog::get()->add_row(filesystem::get_relative_path((*locations)[c].file, *project_path).string() + ':' + std::to_string((*locations)[c].range.start.line + 1) + ':' + std::to_string((*locations)[c].range.start.character + 1) + ": " + names[c]);
     };
   }
   else {
@@ -758,9 +758,9 @@ void Project::LanguageProtocol::show_symbols() {
 
   SelectionDialog::get()->on_select = [locations](unsigned int index, const std::string &text, bool hide_window) {
     auto &offset = (*locations)[index];
-    if(!boost::filesystem::is_regular_file(offset.uri))
+    if(!boost::filesystem::is_regular_file(offset.file))
       return;
-    Notebook::get().open(offset.uri);
+    Notebook::get().open(offset.file);
     auto view = Notebook::get().get_current_view();
     view->place_cursor_at_line_offset(offset.range.start.line, offset.range.start.character);
     view->scroll_to_cursor_delayed(view, true, false);
