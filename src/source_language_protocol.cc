@@ -891,7 +891,7 @@ void Source::LanguageProtocolView::update_diagnostics(std::vector<LanguageProtoc
         if(!end.is_end())
           end.forward_char();
         else
-          start.forward_char();
+          start.backward_char();
       }
 
       bool error = false;
