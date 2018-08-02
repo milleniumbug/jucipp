@@ -831,7 +831,8 @@ void Source::View::setup_format_style(bool is_generic_view) {
         return;
 
       auto special_character = [](Gtk::TextIter iter) {
-        if(*iter == '*' || *iter == '#' || *iter == '<' || *iter == '>' || *iter == ' ' || *iter == '=' || *iter == '`' || *iter == '-')
+        if(*iter == '*' || *iter == '#' || *iter == '<' || *iter == '>' || *iter == ' ' ||
+           *iter == '=' || *iter == '`' || *iter == '-' || *iter == '|')
           return true;
         // Tests if a line starts with for instance: 2.
         if(*iter >= '0' && *iter <= '9' && iter.forward_char() &&
