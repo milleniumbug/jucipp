@@ -789,7 +789,7 @@ void Source::LanguageProtocolView::setup_navigation_and_refactoring() {
              change.text_edits[0].range.start.line == 0 && change.text_edits[0].range.start.character == 0 &&
              (change.text_edits[0].range.end.line > end_iter.get_line() ||
               (change.text_edits[0].range.end.line == end_iter.get_line() && change.text_edits[0].range.end.character >= end_iter.get_line_offset())))
-            replace_text(change.text_edits[0].new_text);
+            (*view_it)->replace_text(change.text_edits[0].new_text);
           else {
             for(auto edit_it = change.text_edits.rbegin(); edit_it != change.text_edits.rend(); ++edit_it) {
               auto start_iter = (*view_it)->get_iter_at_line_pos(edit_it->range.start.line, edit_it->range.start.character);
