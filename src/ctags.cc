@@ -11,11 +11,10 @@
 std::pair<boost::filesystem::path, std::unique_ptr<std::stringstream>> Ctags::get_result(const boost::filesystem::path &path) {
   auto build = Project::Build::create(path);
   auto run_path = build->project_path;
-  std::string exclude;
+  std::string exclude = " --exclude=node_modules";
   if(!run_path.empty()) {
     exclude += " --exclude=" + filesystem::get_relative_path(build->get_default_path(), run_path).string();
     exclude += " --exclude=" + filesystem::get_relative_path(build->get_debug_path(), run_path).string();
-    exclude += " --exclude=node_modules";
   }
   else {
     boost::system::error_code ec;
