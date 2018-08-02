@@ -668,10 +668,8 @@ void Project::LanguageProtocol::show_symbols() {
 
   auto language_id = get_language_id();
   auto executable_name = language_id + "-language-server";
-  if(filesystem::find_executable(executable_name).empty()) {
-    Info::get().print("Executable " + executable_name + " not found");
-    return;
-  }
+  if(filesystem::find_executable(executable_name).empty())
+    return Base::show_symbols();
 
   auto project_path = std::make_shared<boost::filesystem::path>(build->project_path);
 
@@ -681,14 +679,8 @@ void Project::LanguageProtocol::show_symbols() {
   auto view = Notebook::get().get_current_view();
   auto language_protocol_view = dynamic_cast<Source::LanguageProtocolView *>(view);
 
-  if(!capabilities.workspace_symbol && !capabilities.document_symbol) {
-    Info::get().print("Language server does not support workspace/symbol or textDocument/documentSymbol");
-    return;
-  }
-  else if(!language_protocol_view && !capabilities.workspace_symbol) {
-    Info::get().print("Language server does not support workspace/symbol");
-    return;
-  }
+  if(!capabilities.workspace_symbol && !(capabilities.document_symbol && language_protocol_view))
+    return Base::show_symbols();
 
   if(view) {
     auto dialog_iter = view->get_iter_for_dialog();

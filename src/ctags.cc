@@ -15,6 +15,7 @@ std::pair<boost::filesystem::path, std::unique_ptr<std::stringstream>> Ctags::ge
   if(!run_path.empty()) {
     exclude += " --exclude=" + filesystem::get_relative_path(build->get_default_path(), run_path).string();
     exclude += " --exclude=" + filesystem::get_relative_path(build->get_debug_path(), run_path).string();
+    exclude += " --exclude=node_modules";
   }
   else {
     boost::system::error_code ec;
