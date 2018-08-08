@@ -11,7 +11,6 @@
 #include "documentation_cppreference.h"
 #include "filesystem.h"
 #include "info.h"
-#include "notebook.h"
 #include "selection_dialog.h"
 #include "usages_clang.h"
 
@@ -48,10 +47,7 @@ Source::ClangViewParse::ClangViewParse(const boost::filesystem::path &file_path,
 
 void Source::ClangViewParse::rename(const boost::filesystem::path &path) {
   Source::DiffView::rename(path);
-  if(Notebook::get().get_current_view() == this)
-    full_reparse();
-  else
-    full_reparse_needed = true;
+  full_reparse();
 }
 
 bool Source::ClangViewParse::save() {
