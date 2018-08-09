@@ -509,8 +509,7 @@ void Usages::Clang::add_usages_from_includes(const boost::filesystem::path &proj
       visitor_data->paths.emplace(path);
 
     return CXChildVisit_Continue;
-  },
-                      &visitor_data);
+  }, &visitor_data);
 
   for(auto &path : visitor_data.paths)
     add_usages(project_path, build_path, path, usages, visited, spelling, cursor, translation_unit, store_in_cache);
@@ -549,7 +548,7 @@ std::pair<std::map<boost::filesystem::path, Usages::Clang::PathSet>, Usages::Cla
   std::map<boost::filesystem::path, PathSet> paths_includes;
   PathSet paths_with_spelling;
 
-  const static std::regex include_regex(R"R(^[ \t]*#[ \t]*include[ \t]*"([^"]+)".*$)R");
+  const static std::regex include_regex(R"R(^#[ \t]*include[ \t]*"([^"]+)".*$)R");
 
   auto is_spelling_char = [](char chr) {
     return (chr >= 'a' && chr <= 'z') || (chr >= 'A' && chr <= 'Z') || (chr >= '0' && chr <= '9') || chr == '_';
@@ -557,15 +556,27 @@ std::pair<std::map<boost::filesystem::path, Usages::Clang::PathSet>, Usages::Cla
 
   for(auto &path : paths) {
     auto paths_includes_it = paths_includes.emplace(path, PathSet()).first;
-    bool paths_with_spelling_emplaced = false;
+    bool check_spelling = !spelling.empty();
 
     std::ifstream stream(path.string(), std::ifstream::binary);
     if(!stream)
       continue;
     std::string line;
     while(std::getline(stream, line)) {
+      // Optimization: only run regex_match if line starts with # after spaces/tabs
+      auto include_begin = line.cbegin();
+      for(; include_begin != line.cend(); ++include_begin) {
+        if(*include_begin == ' ' || *include_begin == '\t')
+          continue;
+        if(*include_begin == '#')
+          break;
+        else {
+          include_begin = line.cend();
+          break;
+        }
+      }
       std::smatch sm;
-      if(std::regex_match(line, sm, include_regex)) {
+      if(include_begin != line.cend() && std::regex_match(include_begin, line.cend(), sm, include_regex)) {
         boost::filesystem::path path(sm[1].str());
         boost::filesystem::path include_path;
         // remove .. and .
@@ -588,14 +599,18 @@ std::pair<std::map<boost::filesystem::path, Usages::Clang::PathSet>, Usages::Cla
           }
         }
       }
-      else if(!paths_with_spelling_emplaced) {
-        auto pos = line.find(spelling);
-        if(pos != std::string::npos &&
-           ((!spelling.empty() && !is_spelling_char(spelling[0])) ||
-            ((pos == 0 || !is_spelling_char(line[pos - 1])) &&
-             (pos + spelling.size() >= line.size() - 1 || !is_spelling_char(line[pos + spelling.size()]))))) {
-          paths_with_spelling.emplace(path);
-          paths_with_spelling_emplaced = true;
+      else if(check_spelling) {
+        size_t pos = 0;
+        while((pos = line.find(spelling, pos)) != std::string::npos) {
+          if(!is_spelling_char(spelling[0]) ||
+             ((pos == 0 || !is_spelling_char(line[pos - 1])) &&
+              (pos + spelling.size() >= line.size() - 1 || !is_spelling_char(line[pos + spelling.size()])))) {
+            paths_with_spelling.emplace(path);
+            check_spelling = false;
+            break;
+          }
+          else
+            pos += spelling.size();
         }
       }
     }
