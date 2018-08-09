@@ -256,7 +256,7 @@ void Window::set_menu_actions() {
       }
       std::string cmakelists = "cmake_minimum_required(VERSION 2.8)\n\nproject(" + project_name + ")\n\nset(CMAKE_C_FLAGS \"${CMAKE_C_FLAGS} -std=c11 -Wall -Wextra\")\n\nadd_executable(" + project_name + " main.c)\n";
       std::string c_main = "#include <stdio.h>\n\nint main() {\n  printf(\"Hello World!\\n\");\n}\n";
-      std::string clang_format = "IndentWidth: 2\nAccessModifierOffset: -2\nUseTab: Never\nColumnLimit: 0\nMaxEmptyLinesToKeep: 2\nBreakBeforeBraces: Custom\nBraceWrapping: {BeforeElse: true, BeforeCatch: true}\n";
+      std::string clang_format = "IndentWidth: 2\nAccessModifierOffset: -2\nUseTab: Never\nColumnLimit: 0\n";
       if(filesystem::write(cmakelists_path, cmakelists) && filesystem::write(c_main_path, c_main) && filesystem::write(clang_format_path, clang_format)) {
         Directories::get().open(project_path);
         Notebook::get().open(c_main_path);
@@ -292,7 +292,7 @@ void Window::set_menu_actions() {
       }
       std::string cmakelists = "cmake_minimum_required(VERSION 2.8)\n\nproject(" + project_name + ")\n\nset(CMAKE_CXX_FLAGS \"${CMAKE_CXX_FLAGS} -std=c++1y -Wall -Wextra\")\n\nadd_executable(" + project_name + " main.cpp)\n";
       std::string cpp_main = "#include <iostream>\n\nint main() {\n  std::cout << \"Hello World!\\n\";\n}\n";
-      std::string clang_format = "IndentWidth: 2\nAccessModifierOffset: -2\nUseTab: Never\nColumnLimit: 0\nMaxEmptyLinesToKeep: 2\nBreakBeforeBraces: Custom\nBraceWrapping: {BeforeElse: true, BeforeCatch: true}\nNamespaceIndentation: All\n";
+      std::string clang_format = "IndentWidth: 2\nAccessModifierOffset: -2\nUseTab: Never\nColumnLimit: 0\nNamespaceIndentation: All\n";
       if(filesystem::write(cmakelists_path, cmakelists) && filesystem::write(cpp_main_path, cpp_main) && filesystem::write(clang_format_path, clang_format)) {
         Directories::get().open(project_path);
         Notebook::get().open(cpp_main_path);
