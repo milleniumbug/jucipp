@@ -113,7 +113,7 @@ std::string Source::FixIt::string(const Glib::RefPtr<Gtk::TextBuffer> &buffer) {
 std::set<Source::View *> Source::View::non_deleted_views;
 std::set<Source::View *> Source::View::views;
 
-Source::View::View(const boost::filesystem::path &file_path, const Glib::RefPtr<Gsv::Language> &language, bool is_generic_view) : BaseView(file_path, language), SpellCheckView(file_path, language), DiffView(file_path, language), parsed(true) {
+Source::View::View(const boost::filesystem::path &file_path, const Glib::RefPtr<Gsv::Language> &language, bool is_generic_view) : BaseView(file_path, language), SpellCheckView(file_path, language), DiffView(file_path, language) {
   non_deleted_views.emplace(this);
   views.emplace(this);
 
@@ -1315,6 +1315,18 @@ bool Source::View::is_templated_function(Gtk::TextIter iter, Gtk::TextIter &pare
       return false;
   } while(iter.forward_char());
 
+  return false;
+}
+
+bool Source::View::is_possible_argument() {
+  auto iter = get_buffer()->get_insert()->get_iter();
+  if(iter.backward_char() && (!interactive_completion || last_keyval == '(' || last_keyval == ',' || last_keyval == ' ' ||
+                              last_keyval == GDK_KEY_Return || last_keyval == GDK_KEY_KP_Enter)) {
+    while((*iter == ' ' || *iter == '\t' || *iter == '\n' || *iter == '\r') && iter.backward_char()) {
+    }
+    if(*iter == '(' || *iter == ',')
+      return true;
+  }
   return false;
 }
 

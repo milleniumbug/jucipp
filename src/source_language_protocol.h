@@ -66,6 +66,7 @@ namespace LanguageProtocol {
     TextDocumentSync text_document_sync;
     bool hover;
     bool completion;
+    bool signature_help;
     bool definition;
     bool references;
     bool document_highlight;
@@ -162,6 +163,10 @@ namespace Source {
     std::vector<std::string> autocomplete_comment;
     std::vector<std::string> autocomplete_insert;
     std::list<std::pair<Glib::RefPtr<Gtk::TextBuffer::Mark>, Glib::RefPtr<Gtk::TextBuffer::Mark>>> argument_marks;
+    bool autocomplete_show_parameters = false;
+    sigc::connection autocomplete_delayed_show_arguments_connection;
+
+    bool has_named_parameters();
 
     boost::filesystem::path flow_coverage_executable;
     std::vector<std::pair<Glib::RefPtr<Gtk::TextMark>, Glib::RefPtr<Gtk::TextMark>>> flow_coverage_marks;

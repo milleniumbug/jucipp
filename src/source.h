@@ -87,7 +87,7 @@ namespace Source {
     virtual void full_reparse() { full_reparse_needed = false; }
 
   protected:
-    std::atomic<bool> parsed;
+    std::atomic<bool> parsed = {true};
     Tooltips diagnostic_tooltips;
     Tooltips type_tooltips;
     sigc::connection delayed_tooltips_connection;
@@ -122,6 +122,8 @@ namespace Source {
     bool find_close_symbol_forward(Gtk::TextIter iter, Gtk::TextIter &found_iter, unsigned int positive_char, unsigned int negative_char);
     long symbol_count(Gtk::TextIter iter, unsigned int positive_char, unsigned int negative_char);
     bool is_templated_function(Gtk::TextIter iter, Gtk::TextIter &parenthesis_end_iter);
+    /// If insert is at an possible argument. Also based on last key press.
+    bool is_possible_argument();
 
     bool on_key_press_event(GdkEventKey *key) override;
     bool on_key_press_event_basic(GdkEventKey *key);

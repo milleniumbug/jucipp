@@ -68,8 +68,8 @@ namespace Source {
     sigc::connection delayed_show_arguments_connection;
 
   private:
-    bool is_possible_parameter();
-    bool show_arguments;
+    std::atomic<bool> show_parameters = {false};
+
     const std::unordered_map<std::string, std::string> &autocomplete_manipulators_map();
   };
 

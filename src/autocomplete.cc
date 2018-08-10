@@ -1,8 +1,8 @@
 #include "autocomplete.h"
 #include "selection_dialog.h"
 
-Autocomplete::Autocomplete(Gtk::TextView *view, bool &interactive_completion, guint &last_keyval, bool strip_word)
-    : view(view), interactive_completion(interactive_completion), strip_word(strip_word), state(State::IDLE) {
+Autocomplete::Autocomplete(Gtk::TextView *view, bool &interactive_completion, guint &last_keyval, bool pass_buffer_and_strip_word)
+    : view(view), interactive_completion(interactive_completion), pass_buffer_and_strip_word(pass_buffer_and_strip_word) {
   view->get_buffer()->signal_changed().connect([this, &last_keyval] {
     if(CompletionDialog::get() && CompletionDialog::get()->is_visible()) {
       cancel_reparse();
@@ -56,12 +56,13 @@ void Autocomplete::run() {
 
     if(thread.joinable())
       thread.join();
-    auto buffer = view->get_buffer()->get_text();
     auto iter = view->get_buffer()->get_insert()->get_iter();
     auto line_nr = iter.get_line() + 1;
     auto column_nr = iter.get_line_index() + 1;
-    if(strip_word) {
+    Glib::ustring buffer;
+    if(pass_buffer_and_strip_word) {
       auto pos = iter.get_offset() - 1;
+      buffer = view->get_buffer()->get_text();
       while(pos >= 0 && ((buffer[pos] >= 'a' && buffer[pos] <= 'z') || (buffer[pos] >= 'A' && buffer[pos] <= 'Z') ||
                          (buffer[pos] >= '0' && buffer[pos] <= '9') || buffer[pos] == '_')) {
         buffer.replace(pos, 1, " ");

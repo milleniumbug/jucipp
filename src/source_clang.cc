@@ -485,9 +485,9 @@ Source::ClangViewAutocomplete::ClangViewAutocomplete(const boost::filesystem::pa
       return;
     if(!has_focus())
       return;
-    if(show_arguments)
+    if(show_parameters)
       autocomplete.stop();
-    show_arguments = false;
+    show_parameters = false;
     delayed_show_arguments_connection.disconnect();
     delayed_show_arguments_connection = Glib::signal_timeout().connect([this]() {
       if(get_buffer()->get_has_selection())
@@ -496,7 +496,7 @@ Source::ClangViewAutocomplete::ClangViewAutocomplete(const boost::filesystem::pa
         return false;
       if(!has_focus())
         return false;
-      if(is_possible_parameter()) {
+      if(is_possible_argument()) {
         autocomplete.stop();
         autocomplete.run();
       }
@@ -506,7 +506,7 @@ Source::ClangViewAutocomplete::ClangViewAutocomplete(const boost::filesystem::pa
 
   // Remove argument completions
   signal_key_press_event().connect([this](GdkEventKey *key) {
-    if(show_arguments && CompletionDialog::get() && CompletionDialog::get()->is_visible() &&
+    if(show_parameters && CompletionDialog::get() && CompletionDialog::get()->is_visible() &&
        key->keyval != GDK_KEY_Down && key->keyval != GDK_KEY_Up &&
        key->keyval != GDK_KEY_Return && key->keyval != GDK_KEY_KP_Enter &&
        key->keyval != GDK_KEY_ISO_Left_Tab && key->keyval != GDK_KEY_Tab &&
@@ -538,7 +538,7 @@ Source::ClangViewAutocomplete::ClangViewAutocomplete(const boost::filesystem::pa
     if(!is_code_iter(iter))
       return false;
 
-    show_arguments = false;
+    show_parameters = false;
 
     std::string line = " " + get_line_before();
     const static std::regex dot_or_arrow(R"(^.*[a-zA-Z0-9_\)\]\>](\.|->)([a-zA-Z0-9_]*)$)");
@@ -569,8 +569,8 @@ Source::ClangViewAutocomplete::ClangViewAutocomplete(const boost::filesystem::pa
       if(autocomplete.prefix.size() == 0 || autocomplete.prefix[0] < '0' || autocomplete.prefix[0] > '9')
         return true;
     }
-    else if(is_possible_parameter()) {
-      show_arguments = true;
+    else if(is_possible_argument()) {
+      show_parameters = true;
       std::unique_lock<std::mutex> lock(autocomplete.prefix_mutex);
       autocomplete.prefix = "";
       return true;
@@ -631,7 +631,7 @@ Source::ClangViewAutocomplete::ClangViewAutocomplete(const boost::filesystem::pa
         auto result = code_complete_results->get(i);
         if(result.available()) {
           std::string text;
-          if(show_arguments) {
+          if(show_parameters) {
             class Recursive {
             public:
               static void f(const clangmm::CompletionString &completion_string, std::string &text) {
@@ -741,7 +741,7 @@ Source::ClangViewAutocomplete::ClangViewAutocomplete(const boost::filesystem::pa
     if(hide_window) {
       size_t start_pos = std::string::npos;
       size_t end_pos = std::string::npos;
-      if(show_arguments) {
+      if(show_parameters) {
         start_pos = 0;
         end_pos = row.size();
       }
@@ -796,18 +796,6 @@ Source::ClangViewAutocomplete::ClangViewAutocomplete(const boost::filesystem::pa
   autocomplete.get_tooltip = [this](unsigned int index) {
     return clangmm::to_string(clang_getCompletionBriefComment(completion_strings[index]));
   };
-}
-
-bool Source::ClangViewAutocomplete::is_possible_parameter() {
-  auto iter = get_buffer()->get_insert()->get_iter();
-  if(iter.backward_char() && (!interactive_completion || last_keyval == '(' || last_keyval == ',' || last_keyval == ' ' ||
-                              last_keyval == GDK_KEY_Return || last_keyval == GDK_KEY_KP_Enter)) {
-    while((*iter == ' ' || *iter == '\t' || *iter == '\n' || *iter == '\r') && iter.backward_char()) {
-    }
-    if(*iter == '(' || *iter == ',')
-      return true;
-  }
-  return false;
 }
 
 const std::unordered_map<std::string, std::string> &Source::ClangViewAutocomplete::autocomplete_manipulators_map() {

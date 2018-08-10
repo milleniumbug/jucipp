@@ -7,8 +7,9 @@
 class Autocomplete {
   Gtk::TextView *view;
   bool &interactive_completion;
-  /// Some libraries/utilities, like libclang, require that autocomplete is started at the beginning of a word
-  bool strip_word;
+  /// If text_view buffer should be passed to add_rows. Empty buffer is passed if not.
+  /// Also, some utilities, like libclang, require that autocomplete is started at the beginning of a word.
+  bool pass_buffer_and_strip_word;
 
   Dispatcher dispatcher;
 
@@ -20,7 +21,7 @@ public:
   std::vector<std::string> rows;
   Tooltips tooltips;
 
-  std::atomic<State> state;
+  std::atomic<State> state = {State::IDLE};
 
   std::thread thread;
 
@@ -48,7 +49,7 @@ public:
 
   std::function<std::string(unsigned int)> get_tooltip = [](unsigned int index) { return std::string(); };
 
-  Autocomplete(Gtk::TextView *view, bool &interactive_completion, guint &last_keyval, bool strip_word);
+  Autocomplete(Gtk::TextView *view, bool &interactive_completion, guint &last_keyval, bool pass_buffer_and_strip_word);
 
   void run();
   void stop();
