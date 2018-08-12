@@ -1855,7 +1855,7 @@ bool Source::View::on_key_press_event_bracket_language(GdkEventKey *key) {
           if(token == "class" || token == "struct")
             add_semicolon = true;
           // Add semicolon after lambda unless it's a parameter
-          else if(*start_iter != '(') {
+          else if(*start_iter != '(' && *start_iter != '{' && *start_iter != '[') {
             auto it = condition_iter;
             long para_count = 0;
             long square_count = 0;
