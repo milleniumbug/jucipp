@@ -7,6 +7,7 @@
 #include "menu.h"
 #include "selection_dialog.h"
 #include "terminal.h"
+#include "utility.h"
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/spirit/home/qi/char.hpp>
 #include <boost/spirit/home/qi/operator.hpp>
@@ -1331,13 +1332,10 @@ bool Source::View::is_possible_argument() {
 }
 
 bool Source::View::on_key_press_event(GdkEventKey *key) {
-  class Guard {
-  public:
-    bool &value;
-    Guard(bool &value_) : value(value_) { value = true; }
-    ~Guard() { value = false; }
-  };
-  Guard guard{enable_multiple_cursors};
+  enable_multiple_cursors = true;
+  ScopeGuard guard{[this] {
+    enable_multiple_cursors = false;
+  }};
 
   if(SelectionDialog::get() && SelectionDialog::get()->is_visible()) {
     if(SelectionDialog::get()->on_key_press(key))
@@ -1717,8 +1715,19 @@ bool Source::View::on_key_press_event_bracket_language(GdkEventKey *key) {
     cleanup_whitespace_characters(iter);
     iter = get_buffer()->get_insert()->get_iter();
 
-    auto condition_iter = iter;
-    condition_iter.backward_char();
+    auto previous_iter = iter;
+    previous_iter.backward_char();
+    // Remove matching bracket highlights that get extended when inserting text in between the brackets
+    ScopeGuard guard;
+    if((*previous_iter == '{' && *iter == '}') || (*previous_iter == '(' && *iter == ')') ||
+       (*previous_iter == '[' && *iter == ']') || (*previous_iter == '<' && *iter == '>')) {
+      get_source_buffer()->set_highlight_matching_brackets(false);
+      guard.on_exit = [this] {
+        get_source_buffer()->set_highlight_matching_brackets(true);
+      };
+    }
+
+    auto condition_iter = previous_iter;
     condition_iter = find_non_whitespace_code_iter_backward(condition_iter);
     auto start_iter = get_start_of_expression(condition_iter);
     auto tabs_end_iter = get_tabs_end_iter(start_iter);
@@ -2171,13 +2180,10 @@ bool Source::View::on_key_press_event_smart_brackets(GdkEventKey *key) {
 }
 
 bool Source::View::on_key_press_event_smart_inserts(GdkEventKey *key) {
-  class Guard {
-  public:
-    bool &value;
-    Guard(bool &value_) : value(value_) { value = true; }
-    ~Guard() { value = false; }
-  };
-  Guard guard{keep_argument_marks};
+  keep_argument_marks = true;
+  ScopeGuard guard{[this] {
+    keep_argument_marks = false;
+  }};
 
   if(get_buffer()->get_has_selection()) {
     bool perform_insertion = false;

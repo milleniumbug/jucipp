@@ -19,6 +19,7 @@ set(JUCI_SHARED_FILES
   source_spellcheck.cc
   terminal.cc
   usages_clang.cc
+  utility.cc
 )
 if(LIBLLDB_FOUND)
   list(APPEND JUCI_SHARED_FILES debug_lldb.cc)

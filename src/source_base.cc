@@ -3,6 +3,7 @@
 #include "git.h"
 #include "info.h"
 #include "terminal.h"
+#include "utility.h"
 #include <fstream>
 #include <gtksourceview/gtksource.h>
 
@@ -76,18 +77,11 @@ bool Source::BaseView::load(bool not_undoable_action) {
   disable_spellcheck = true;
   if(not_undoable_action)
     get_source_buffer()->begin_not_undoable_action();
-
-  class Guard {
-  public:
-    Source::BaseView *view;
-    bool not_undoable_action;
-    ~Guard() {
-      if(not_undoable_action)
-        view->get_source_buffer()->end_not_undoable_action();
-      view->disable_spellcheck = false;
-    }
-  };
-  Guard guard{this, not_undoable_action};
+  ScopeGuard guard{[this, not_undoable_action] {
+    if(not_undoable_action)
+      get_source_buffer()->end_not_undoable_action();
+    disable_spellcheck = false;
+  }};
 
   if(language) {
     std::ifstream input(file_path.string(), std::ofstream::binary);
@@ -668,13 +662,10 @@ void Source::BaseView::cleanup_whitespace_characters(const Gtk::TextIter &iter) 
 }
 
 void Source::BaseView::paste() {
-  class Guard {
-  public:
-    bool &value;
-    Guard(bool &value_) : value(value_) { value = true; }
-    ~Guard() { value = false; }
-  };
-  Guard guard{enable_multiple_cursors};
+  enable_multiple_cursors = true;
+  ScopeGuard guard{[this] {
+    enable_multiple_cursors = false;
+  }};
 
   std::string text = Gtk::Clipboard::get()->wait_for_text();
 
