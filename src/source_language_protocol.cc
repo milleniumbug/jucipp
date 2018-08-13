@@ -1421,8 +1421,8 @@ void Source::LanguageProtocolView::setup_autocomplete() {
       Glib::ustring insert = autocomplete_insert[index];
 
       if(autocomplete_show_parameters) {
-        if(has_named_parameters()) { // Do not select named parameters in for instance Python, instead add = after insert
-          get_buffer()->insert(CompletionDialog::get()->start_mark->get_iter(), insert + '=');
+        if(has_named_parameters()) { // Do not select named parameters in for instance Python
+          get_buffer()->insert(CompletionDialog::get()->start_mark->get_iter(), insert);
           return;
         }
         else {
