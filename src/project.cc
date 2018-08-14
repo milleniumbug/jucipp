@@ -661,9 +661,17 @@ void Project::LLDB::debug_cancel() {
 #endif
 
 void Project::LanguageProtocol::show_symbols() {
-  if(build->project_path.empty()) {
-    Info::get().print("Could not find project folder");
-    return;
+  auto project_path = std::make_shared<boost::filesystem::path>(build->project_path);
+  auto view = Notebook::get().get_current_view();
+  auto language_protocol_view = dynamic_cast<Source::LanguageProtocolView *>(view);
+
+  if(project_path->empty()) {
+    if(language_protocol_view)
+      *project_path = language_protocol_view->file_path.parent_path();
+    else {
+      Info::get().print("Could not find project folder");
+      return;
+    }
   }
 
   auto language_id = get_language_id();
@@ -671,13 +679,8 @@ void Project::LanguageProtocol::show_symbols() {
   if(filesystem::find_executable(executable_name).empty())
     return Base::show_symbols();
 
-  auto project_path = std::make_shared<boost::filesystem::path>(build->project_path);
-
-  auto client = ::LanguageProtocol::Client::get(*project_path, language_id);
-  auto capabilities = client->initialize(nullptr);
-
-  auto view = Notebook::get().get_current_view();
-  auto language_protocol_view = dynamic_cast<Source::LanguageProtocolView *>(view);
+  auto client = ::LanguageProtocol::Client::get(language_protocol_view ? language_protocol_view->file_path : *project_path, language_id);
+  auto capabilities = client->initialize(language_protocol_view);
 
   if(!capabilities.workspace_symbol && !(capabilities.document_symbol && language_protocol_view))
     return Base::show_symbols();
@@ -704,16 +707,24 @@ void Project::LanguageProtocol::show_symbols() {
         if(text.empty())
           return;
       }
-      std::vector<std::string> names;
+      std::vector<std::string> rows;
       std::promise<void> result_processed;
-      client->write_request(nullptr, "workspace/symbol", R"("query":")" + text + '"', [&result_processed, &names, locations, project_path](const boost::property_tree::ptree &result, bool error) {
+      client->write_request(nullptr, "workspace/symbol", R"("query":")" + text + '"', [&result_processed, &rows, locations, project_path](const boost::property_tree::ptree &result, bool error) {
         if(!error) {
           for(auto it = result.begin(); it != result.end(); ++it) {
             try {
               ::LanguageProtocol::Location location(it->second.get_child("location"));
               if(filesystem::file_in_path(location.file, *project_path)) {
+                ::LanguageProtocol::Location location(it->second.get_child("location"));
+
+                std::string row = filesystem::get_relative_path(location.file, *project_path).string() + ':';
+                auto container_name = it->second.get<std::string>("containerName", "");
+                if(!container_name.empty() && container_name != "null")
+                  row += container_name + ':';
+                row += std::to_string(location.range.start.line + 1) + ": <b>" + it->second.get<std::string>("name") + "</b>";
+
                 locations->emplace_back(std::move(location));
-                names.emplace_back(it->second.get<std::string>("name"));
+                rows.emplace_back(std::move(row));
               }
             }
             catch(...) {
@@ -723,19 +734,27 @@ void Project::LanguageProtocol::show_symbols() {
         result_processed.set_value();
       });
       result_processed.get_future().get();
-      for(size_t c = 0; c < locations->size() && c < names.size(); ++c)
-        SelectionDialog::get()->add_row(filesystem::get_relative_path((*locations)[c].file, *project_path).string() + ':' + std::to_string((*locations)[c].range.start.line + 1) + ':' + std::to_string((*locations)[c].range.start.character + 1) + ": " + names[c]);
+      for(auto &row : rows)
+        SelectionDialog::get()->add_row(row);
     };
   }
   else {
-    std::vector<std::string> names;
+    std::vector<std::string> rows;
     std::promise<void> result_processed;
-    client->write_request(nullptr, "textDocument/documentSymbol", R"("textDocument":{"uri":"file://)" + language_protocol_view->file_path.string() + "\"}", [&result_processed, &names, locations, project_path](const boost::property_tree::ptree &result, bool error) {
+    client->write_request(nullptr, "textDocument/documentSymbol", R"("textDocument":{"uri":"file://)" + language_protocol_view->file_path.string() + "\"}", [&result_processed, &rows, locations](const boost::property_tree::ptree &result, bool error) {
       if(!error) {
         for(auto it = result.begin(); it != result.end(); ++it) {
           try {
-            locations->emplace_back(it->second.get_child("location"));
-            names.emplace_back(it->second.get<std::string>("name"));
+            ::LanguageProtocol::Location location(it->second.get_child("location"));
+
+            std::string row;
+            auto container_name = it->second.get<std::string>("containerName", "");
+            if(!container_name.empty() && container_name != "null")
+              row += container_name + ':';
+            row += std::to_string(location.range.start.line + 1) + ": <b>" + it->second.get<std::string>("name") + "</b>";
+
+            locations->emplace_back(std::move(location));
+            rows.emplace_back(std::move(row));
           }
           catch(...) {
           }
@@ -744,8 +763,8 @@ void Project::LanguageProtocol::show_symbols() {
       result_processed.set_value();
     });
     result_processed.get_future().get();
-    for(size_t c = 0; c < locations->size() && c < names.size(); ++c)
-      SelectionDialog::get()->add_row(std::to_string((*locations)[c].range.start.line + 1) + ':' + std::to_string((*locations)[c].range.start.character + 1) + ": " + names[c]);
+    for(auto &row : rows)
+      SelectionDialog::get()->add_row(row);
   }
 
   SelectionDialog::get()->on_select = [locations](unsigned int index, const std::string &text, bool hide_window) {

@@ -854,6 +854,40 @@ void Source::LanguageProtocolView::setup_navigation_and_refactoring() {
     };
   }
 
+  if(capabilities.document_symbol) {
+    get_methods = [this]() {
+      std::vector<std::pair<Offset, std::string>> methods;
+
+      std::promise<void> result_processed;
+      client->write_request(nullptr, "textDocument/documentSymbol", R"("textDocument":{"uri":"file://)" + file_path.string() + "\"}", [&result_processed, &methods](const boost::property_tree::ptree &result, bool error) {
+        if(!error) {
+          for(auto it = result.begin(); it != result.end(); ++it) {
+            try {
+              auto kind = it->second.get<int>("kind");
+              if(kind == 6 || kind == 9 || kind == 12) {
+                LanguageProtocol::Location location(it->second.get_child("location"));
+
+                std::string row;
+                auto container_name = it->second.get<std::string>("containerName", "");
+                if(!container_name.empty() && container_name != "null")
+                  row += container_name + ':';
+                row += std::to_string(location.range.start.line + 1) + ": <b>" + it->second.get<std::string>("name") + "</b>";
+
+                methods.emplace_back(Offset(location.range.start.line, location.range.start.character), std::move(row));
+              }
+            }
+            catch(...) {
+            }
+          }
+        }
+        result_processed.set_value();
+      });
+      result_processed.get_future().get();
+
+      return methods;
+    };
+  }
+
   goto_next_diagnostic = [this]() {
     place_cursor_at_next_diagnostic();
   };
