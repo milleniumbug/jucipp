@@ -736,6 +736,17 @@ void Source::BaseView::paste() {
           first_paste_line_has_tabs = true;
           paste_line_tabs = tabs;
         }
+        else if(language && language->get_id() == "python") { // Special case for Python code where the first line ends with ':'
+          char last_char = 0;
+          for(auto &chr : line) {
+            if(chr != ' ' && chr != '\t')
+              last_char = chr;
+          }
+          if(last_char == ':') {
+            first_paste_line_has_tabs = true;
+            paste_line_tabs = tabs;
+          }
+        }
         first_paste_line = false;
       }
       else if(!empty_line)
