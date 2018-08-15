@@ -860,7 +860,7 @@ void Source::LanguageProtocolView::setup_navigation_and_refactoring() {
       std::vector<std::pair<Offset, std::string>> methods;
 
       std::promise<void> result_processed;
-      client->write_request(nullptr, "textDocument/documentSymbol", R"("textDocument":{"uri":"file://)" + file_path.string() + "\"}", [&result_processed, &methods](const boost::property_tree::ptree &result, bool error) {
+      client->write_request(this, "textDocument/documentSymbol", R"("textDocument":{"uri":"file://)" + file_path.string() + "\"}", [&result_processed, &methods](const boost::property_tree::ptree &result, bool error) {
         if(!error) {
           for(auto it = result.begin(); it != result.end(); ++it) {
             try {
