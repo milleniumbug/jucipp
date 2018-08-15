@@ -283,10 +283,11 @@ void LanguageProtocol::Client::write_request(Source::LanguageProtocolView *view,
       std::unique_lock<std::mutex> lock(read_write_mutex);
       auto id_it = handlers.find(message_id);
       if(id_it != handlers.end()) {
+        Terminal::get().async_print("Request to language server timed out. If you suspect the server has crashed, please close and reopen all project source files.\n", true);
         auto function = std::move(id_it->second.second);
         handlers.erase(id_it->first);
         lock.unlock();
-        function(boost::property_tree::ptree(), false);
+        function(boost::property_tree::ptree(), true);
         lock.lock();
       }
     });
@@ -302,7 +303,7 @@ void LanguageProtocol::Client::write_request(Source::LanguageProtocolView *view,
       auto function = std::move(id_it->second.second);
       handlers.erase(id_it->first);
       lock.unlock();
-      function(boost::property_tree::ptree(), false);
+      function(boost::property_tree::ptree(), true);
       lock.lock();
     }
   }
