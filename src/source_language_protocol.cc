@@ -1250,34 +1250,17 @@ void Source::LanguageProtocolView::setup_autocomplete() {
 
     autocomplete_show_parameters = false;
 
-    std::string line = " " + get_line_before();
-    const static std::regex dot_or_arrow(R"(^.*[a-zA-Z0-9_\)\]\>"'](\.)([a-zA-Z0-9_]*)$)");
-    const static std::regex colon_colon(R"(^.*::([a-zA-Z0-9_]*)$)");
-    const static std::regex part_of_symbol(R"(^.*[^a-zA-Z0-9_]+([a-zA-Z0-9_]{3,})$)");
+    auto line = ' ' + get_line_before();
+    const static std::regex regex("^.*([a-zA-Z_\\)\\]\\>\"']|[^a-zA-Z0-9_][a-zA-Z_][a-zA-Z0-9_]*)(\\.)([a-zA-Z0-9_]*)$|" // .
+                                  "^.*(::)([a-zA-Z0-9_]*)$|"                                                             // ::
+                                  "^.*[^a-zA-Z0-9_]([a-zA-Z_][a-zA-Z0-9_]{2,})$");                                       // part of symbol
     std::smatch sm;
-    if(std::regex_match(line, sm, dot_or_arrow)) {
+    if(std::regex_match(line, sm, regex)) {
       {
         std::unique_lock<std::mutex> lock(autocomplete.prefix_mutex);
-        autocomplete.prefix = sm[2].str();
+        autocomplete.prefix = sm.length(2) ? sm[3].str() : sm.length(4) ? sm[5].str() : sm[6].str();
       }
-      if(autocomplete.prefix.size() == 0 || autocomplete.prefix[0] < '0' || autocomplete.prefix[0] > '9')
-        return true;
-    }
-    else if(std::regex_match(line, sm, colon_colon)) {
-      {
-        std::unique_lock<std::mutex> lock(autocomplete.prefix_mutex);
-        autocomplete.prefix = sm[1].str();
-      }
-      if(autocomplete.prefix.size() == 0 || autocomplete.prefix[0] < '0' || autocomplete.prefix[0] > '9')
-        return true;
-    }
-    else if(std::regex_match(line, sm, part_of_symbol)) {
-      {
-        std::unique_lock<std::mutex> lock(autocomplete.prefix_mutex);
-        autocomplete.prefix = sm[1].str();
-      }
-      if(autocomplete.prefix.size() == 0 || autocomplete.prefix[0] < '0' || autocomplete.prefix[0] > '9')
-        return true;
+      return true;
     }
     else if(is_possible_argument()) {
       autocomplete_show_parameters = true;
