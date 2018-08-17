@@ -1434,7 +1434,7 @@ void Source::LanguageProtocolView::setup_autocomplete() {
   };
 
   autocomplete.on_select = [this](unsigned int index, const std::string &text, bool hide_window) {
-    Glib::ustring insert = autocomplete_insert[index];
+    Glib::ustring insert = hide_window ? autocomplete_insert[index] : text;
 
     get_buffer()->erase(CompletionDialog::get()->start_mark->get_iter(), get_buffer()->get_insert()->get_iter());
 
