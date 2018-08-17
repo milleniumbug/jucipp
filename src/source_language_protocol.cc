@@ -1434,10 +1434,20 @@ void Source::LanguageProtocolView::setup_autocomplete() {
   };
 
   autocomplete.on_select = [this](unsigned int index, const std::string &text, bool hide_window) {
-    get_buffer()->erase(CompletionDialog::get()->start_mark->get_iter(), get_buffer()->get_insert()->get_iter());
-    if(hide_window) {
-      Glib::ustring insert = autocomplete_insert[index];
+    Glib::ustring insert = autocomplete_insert[index];
 
+    get_buffer()->erase(CompletionDialog::get()->start_mark->get_iter(), get_buffer()->get_insert()->get_iter());
+
+    // Do not insert function/template parameters if they already exist
+    auto iter = get_buffer()->get_insert()->get_iter();
+    if(*iter == '(' || *iter == '<') {
+      auto bracket_pos = insert.find(*iter);
+      if(bracket_pos != std::string::npos) {
+        insert = insert.substr(0, bracket_pos);
+      }
+    }
+
+    if(hide_window) {
       if(autocomplete_show_parameters) {
         if(has_named_parameters()) { // Do not select named parameters in for instance Python
           get_buffer()->insert(CompletionDialog::get()->start_mark->get_iter(), insert);
@@ -1449,15 +1459,6 @@ void Source::LanguageProtocolView::setup_autocomplete() {
           int end_offset = CompletionDialog::get()->start_mark->get_iter().get_offset() + insert.size();
           get_buffer()->select_range(get_buffer()->get_iter_at_offset(start_offset), get_buffer()->get_iter_at_offset(end_offset));
           return;
-        }
-      }
-
-      // Do not insert function/template parameters if they already exist
-      auto iter = get_buffer()->get_insert()->get_iter();
-      if(*iter == '(' || *iter == '<') {
-        auto bracket_pos = insert.find(*iter);
-        if(bracket_pos != std::string::npos) {
-          insert = insert.substr(0, bracket_pos);
         }
       }
 
@@ -1500,7 +1501,7 @@ void Source::LanguageProtocolView::setup_autocomplete() {
       }
     }
     else
-      get_buffer()->insert(CompletionDialog::get()->start_mark->get_iter(), text);
+      get_buffer()->insert(CompletionDialog::get()->start_mark->get_iter(), insert);
   };
 
   autocomplete.get_tooltip = [this](unsigned int index) {
