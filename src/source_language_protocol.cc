@@ -1,6 +1,7 @@
 #include "source_language_protocol.h"
 #include "filesystem.h"
 #include "info.h"
+#include "notebook.h"
 #include "project.h"
 #include "selection_dialog.h"
 #include "terminal.h"
@@ -1027,6 +1028,8 @@ void Source::LanguageProtocolView::show_type_tooltips(const Gdk::Rectangle &rect
         } // Remove unnecessary newlines
         dispatcher.post([this, offset, content, current_request] {
           if(current_request != request_count)
+            return;
+          if(Notebook::get().get_current_view() != this)
             return;
           if(offset >= get_buffer()->get_char_count())
             return;
