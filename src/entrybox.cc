@@ -21,7 +21,13 @@ EntryBox::Entry::Entry(const std::string &content, std::function<void(const std:
     if(key->keyval == GDK_KEY_Up || key->keyval == GDK_KEY_KP_Up) {
       auto &history = entry_histories[get_placeholder_text()];
       if(history.size() > 0) {
-        selected_history++;
+        if(selected_history == 0 && history.front() != get_text()) {
+          // This restores correct history behavior with find text initialized
+          // from a source view selection.
+        }
+        else {
+          selected_history++;
+        }
         if(selected_history >= history.size())
           selected_history = history.size() - 1;
         set_text(history[selected_history]);
