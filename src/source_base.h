@@ -64,6 +64,8 @@ namespace Source {
 
     void paste();
 
+    std::string get_selected_text();
+
     void search_highlight(const std::string &text, bool case_sensitive, bool regex);
     void search_forward();
     void search_backward();

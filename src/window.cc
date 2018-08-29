@@ -1447,6 +1447,12 @@ void Window::search_and_replace_entry() {
   auto search_entry_it = EntryBox::get().entries.begin();
   search_entry_it->set_placeholder_text("Find");
   if(auto view = Notebook::get().get_current_view()) {
+    auto const selected = view->get_selected_text();
+    if(!selected.empty()) {
+      search_entry_it->set_text(selected);
+    }
+  }
+  if(auto view = Notebook::get().get_current_view()) {
     view->update_search_occurrences = [label_it](int number) {
       label_it->update(0, std::to_string(number));
     };

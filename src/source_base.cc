@@ -806,6 +806,14 @@ void Source::BaseView::paste() {
   scroll_to_cursor_delayed(this, false, false);
 }
 
+std::string Source::BaseView::get_selected_text() {
+  Gtk::TextIter start, end;
+  if(!get_buffer()->get_selection_bounds(start, end)) {
+    return {};
+  }
+  return get_buffer()->get_text(start, end);
+}
+
 void Source::BaseView::search_highlight(const std::string &text, bool case_sensitive, bool regex) {
   gtk_source_search_settings_set_case_sensitive(search_settings, case_sensitive);
   gtk_source_search_settings_set_regex_enabled(search_settings, regex);
