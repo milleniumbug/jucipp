@@ -1440,18 +1440,19 @@ void Window::search_and_replace_entry() {
       }
     }
   };
+
+  if(auto view = Notebook::get().get_current_view()) {
+    auto const selected = view->get_selected_text();
+    if(!selected.empty()) {
+      last_search = selected;
+    }
+  }
   EntryBox::get().entries.emplace_back(last_search, [](const std::string &content) {
     if(auto view = Notebook::get().get_current_view())
       view->search_forward();
   });
   auto search_entry_it = EntryBox::get().entries.begin();
   search_entry_it->set_placeholder_text("Find");
-  if(auto view = Notebook::get().get_current_view()) {
-    auto const selected = view->get_selected_text();
-    if(!selected.empty()) {
-      search_entry_it->set_text(selected);
-    }
-  }
   if(auto view = Notebook::get().get_current_view()) {
     view->update_search_occurrences = [label_it](int number) {
       label_it->update(0, std::to_string(number));
