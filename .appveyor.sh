@@ -1,3 +1,4 @@
+#!/bin/bash
 set -x
 cd "${APPVEYOR_BUILD_FOLDER}" || exit 1
 git submodule update --init --recursive
