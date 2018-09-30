@@ -1374,7 +1374,7 @@ void Source::LanguageProtocolView::setup_autocomplete() {
               if(!label.empty()) {
                 autocomplete.rows.emplace_back(std::move(label));
                 autocomplete_comment.emplace_back(std::move(detail));
-                if(!documentation.empty()) {
+                if(!documentation.empty() && documentation != autocomplete_comment.back()) {
                   if(!autocomplete_comment.back().empty())
                     autocomplete_comment.back() += "\n\n";
                   autocomplete_comment.back() += documentation;
