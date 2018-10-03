@@ -84,6 +84,9 @@ CompileCommands::CompileCommands(const boost::filesystem::path &build_path) {
 std::vector<std::string> CompileCommands::get_arguments(const boost::filesystem::path &build_path, const boost::filesystem::path &file_path) {
   std::string default_std_argument = "-std=c++1y";
 
+  auto extension = file_path.extension().string();
+  bool is_header = CompileCommands::is_header(file_path) || extension.empty(); // Include std C++ headers that are without extensions
+
   std::vector<std::string> arguments;
   if(!build_path.empty()) {
     clangmm::CompilationDatabase db(build_path.string());
@@ -99,7 +102,8 @@ std::vector<std::string> CompileCommands::get_arguments(const boost::filesystem:
             continue;
           }
           else if(cmd_arguments[c] == "-o" || cmd_arguments[c] == "-c" ||
-                  cmd_arguments[c] == "-x") { // Remove language arguments since some tools add languages not understood by clang
+                  cmd_arguments[c] == "-x" ||                          // Remove language arguments since some tools add languages not understood by clang
+                  (is_header && cmd_arguments[c] == "-include-pch")) { // Header files should not use precompiled headers
             ignore_next = true;
             continue;
           }
@@ -132,9 +136,6 @@ std::vector<std::string> CompileCommands::get_arguments(const boost::filesystem:
 #endif
   }
   arguments.emplace_back("-fretain-comments-from-system-headers");
-
-  auto extension = file_path.extension().string();
-  bool is_header = CompileCommands::is_header(file_path) || extension.empty(); // Include std C++ headers that are without extensions
 
   if(is_header) {
     arguments.emplace_back("-Wno-pragma-once-outside-header");
