@@ -103,7 +103,8 @@ std::vector<std::string> CompileCommands::get_arguments(const boost::filesystem:
           }
           else if(cmd_arguments[c] == "-o" || cmd_arguments[c] == "-c" ||
                   cmd_arguments[c] == "-x" ||                          // Remove language arguments since some tools add languages not understood by clang
-                  (is_header && cmd_arguments[c] == "-include-pch")) { // Header files should not use precompiled headers
+                  (is_header && cmd_arguments[c] == "-include-pch") || // Header files should not use precompiled headers
+                  cmd_arguments[c] == "-MF") {                         // Exclude dependency file generation
             ignore_next = true;
             continue;
           }
