@@ -664,15 +664,14 @@ void Source::View::setup_format_style(bool is_generic_view) {
           try {
             auto start = get_iter_at_line_offset(atoi(sm[2].str().c_str()) - 1, atoi(sm[3].str().c_str()) - 1);
             ++num_errors;
-            if(start.ends_line())
-              start.backward_char();
+            while(start.ends_line() && start.backward_char()) {}
             auto end = start;
             end.forward_char();
             if(start == end)
-              start.forward_char();
+              start.backward_char();
 
-            add_diagnostic_tooltip(start, end, true, [sm = std::move(sm)](const Glib::RefPtr<Gtk::TextBuffer> &buffer) {
-              buffer->insert_at_cursor(sm[1].str());
+            add_diagnostic_tooltip(start, end, true, [error_message = sm[1].str()](const Glib::RefPtr<Gtk::TextBuffer> &buffer) {
+              buffer->insert_at_cursor(error_message);
             });
           }
           catch(...) {
