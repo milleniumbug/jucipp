@@ -195,19 +195,19 @@ Source::View::View(const boost::filesystem::path &file_path, const Glib::RefPtr<
   if(is_bracket_language)
     comment_characters = "//";
   else if(language) {
-    if(language->get_id() == "cmake" || language->get_id() == "makefile" || language->get_id() == "python" ||
-       language->get_id() == "python3" || language->get_id() == "sh" || language->get_id() == "perl" ||
-       language->get_id() == "ruby" || language->get_id() == "r" || language->get_id() == "asm" ||
-       language->get_id() == "automake")
+    auto language_id = language->get_id();
+    if(language_id == "cmake" || language_id == "makefile" || language_id == "python" ||
+       language_id == "python3" || language_id == "sh" || language_id == "perl" ||
+       language_id == "ruby" || language_id == "r" || language_id == "asm" ||
+       language_id == "automake" || language_id == "yaml")
       comment_characters = "#";
-    else if(language->get_id() == "latex" || language->get_id() == "matlab" || language->get_id() == "octave" ||
-            language->get_id() == "bibtex")
+    else if(language_id == "latex" || language_id == "matlab" || language_id == "octave" || language_id == "bibtex")
       comment_characters = "%";
-    else if(language->get_id() == "fortran")
+    else if(language_id == "fortran")
       comment_characters = "!";
-    else if(language->get_id() == "pascal")
+    else if(language_id == "pascal")
       comment_characters = "//";
-    else if(language->get_id() == "lua")
+    else if(language_id == "lua")
       comment_characters = "--";
   }
   if(!comment_characters.empty()) {
