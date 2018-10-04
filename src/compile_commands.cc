@@ -1,5 +1,6 @@
 #include "compile_commands.h"
 #include "clangmm.h"
+#include <algorithm>
 #include <boost/property_tree/json_parser.hpp>
 #include <regex>
 
@@ -136,7 +137,10 @@ std::vector<std::string> CompileCommands::get_arguments(const boost::filesystem:
       arguments.emplace_back("-I" + (boost::filesystem::path(env_msystem_prefix) / "lib/clang" / clang_version / "include").string());
 #endif
   }
-  arguments.emplace_back("-fretain-comments-from-system-headers");
+  
+  // Do not add -fretain-comments-from-system-headers if pch is used, since the pch was most likely made without this flag
+  if(std::none_of(arguments.begin(), arguments.end(), [](const std::string &argument) { return argument == "-include-pch"; }))
+    arguments.emplace_back("-fretain-comments-from-system-headers");
 
   if(is_header) {
     arguments.emplace_back("-Wno-pragma-once-outside-header");
