@@ -664,7 +664,8 @@ void Source::View::setup_format_style(bool is_generic_view) {
           try {
             auto start = get_iter_at_line_offset(atoi(sm[2].str().c_str()) - 1, atoi(sm[3].str().c_str()) - 1);
             ++num_errors;
-            while(start.ends_line() && start.backward_char()) {}
+            while(start.ends_line() && start.backward_char()) {
+            }
             auto end = start;
             end.forward_char();
             if(start == end)
@@ -1816,7 +1817,12 @@ bool Source::View::on_key_press_event_bracket_language(GdkEventKey *key) {
       // [\n  1, 2, 3,\n
       // return (\n
       // ReactDOM.render(\n  <div>\n
-      if((*start_iter == '[' && *iter != ']') || (*start_iter == '(' && *iter != ')') || (*start_iter == '{' && *iter != '}')) {
+      Gtk::TextIter found_iter;
+      auto after_start_iter = start_iter;
+      after_start_iter.forward_char();
+      if((*start_iter == '[' && (!find_close_symbol_forward(after_start_iter, found_iter, '[', ']') || found_iter > iter)) ||
+         (*start_iter == '(' && (!find_close_symbol_forward(after_start_iter, found_iter, '(', ')') || found_iter > iter)) ||
+         (*start_iter == '{' && (!find_close_symbol_forward(after_start_iter, found_iter, '{', '}') || found_iter > iter))) {
         get_buffer()->insert_at_cursor('\n' + tabs + tab);
         scroll_to(get_buffer()->get_insert());
         return true;

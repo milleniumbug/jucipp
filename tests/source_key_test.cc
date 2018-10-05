@@ -2462,6 +2462,20 @@ int main() {
                                      "  ");
       g_assert(buffer->get_insert()->get_iter() == buffer->end());
     }
+    {
+      buffer->set_text("  {}");
+      view.on_key_press_event(&event);
+      g_assert(buffer->get_text() == "  {}\n"
+                                     "  ");
+      g_assert(buffer->get_insert()->get_iter() == buffer->end());
+    }
+    {
+      buffer->set_text("{}");
+      view.on_key_press_event(&event);
+      g_assert(buffer->get_text() == "{}\n"
+                                     "");
+      g_assert(buffer->get_insert()->get_iter() == buffer->end());
+    }
   }
   {
     auto language = language_manager->get_language("markdown");
